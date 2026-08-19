@@ -4,9 +4,15 @@ const DEFAULTS = {
   heading: 'Go Premium',
   subheading: '',
   ctaText: 'Upgrade Now',
+  ctaWhatsappNumber: '',
+  ctaWhatsappMessage: '',
   bannerImageUrl: '',
   bannerText: '',
   gridColumns: 2,
+  featuresHeading: "What You'll Get",
+  instructorsHeading: 'Meet Your Teachers',
+  videosHeading: 'Top Learning Videos',
+  testimonialsHeading: 'Trusted By Thousands',
 };
 
 const DEFAULT_INTRO_VIDEO = {
@@ -130,10 +136,16 @@ const getPremiumFeaturesConfig = async (req, res) => {
         heading: config?.heading || DEFAULTS.heading,
         subheading: config?.subheading ?? DEFAULTS.subheading,
         ctaText: config?.ctaText || DEFAULTS.ctaText,
+        ctaWhatsappNumber: config?.ctaWhatsappNumber ?? DEFAULTS.ctaWhatsappNumber,
+        ctaWhatsappMessage: config?.ctaWhatsappMessage ?? DEFAULTS.ctaWhatsappMessage,
         bannerImageUrl: config?.bannerImageUrl ?? DEFAULTS.bannerImageUrl,
         bannerText: config?.bannerText ?? DEFAULTS.bannerText,
         introVideo: config?.introVideo ? normalizeIntroVideo(config.introVideo) : DEFAULT_INTRO_VIDEO,
         gridColumns: normalizeGridColumns(config?.gridColumns),
+        featuresHeading: config?.featuresHeading || DEFAULTS.featuresHeading,
+        instructorsHeading: config?.instructorsHeading || DEFAULTS.instructorsHeading,
+        videosHeading: config?.videosHeading || DEFAULTS.videosHeading,
+        testimonialsHeading: config?.testimonialsHeading || DEFAULTS.testimonialsHeading,
         features: mapAndSort(config?.features, mapFeature),
         stats: mapAndSort(config?.stats, mapStat),
         videos: mapAndSort(config?.videos, mapVideo),
@@ -167,7 +179,8 @@ const upsertPremiumFeaturesConfig = async (req, res) => {
     if (!organizationId) return res.status(400).json({ message: 'User organization not found' });
 
     const {
-      heading, subheading, ctaText, bannerImageUrl, bannerText, gridColumns,
+      heading, subheading, ctaText, ctaWhatsappNumber, ctaWhatsappMessage, bannerImageUrl, bannerText, gridColumns,
+      featuresHeading, instructorsHeading, videosHeading, testimonialsHeading,
       features, stats, videos, testimonials, instructors, banners, introVideo, pricing, isActive,
     } = req.body || {};
 
@@ -207,9 +220,15 @@ const upsertPremiumFeaturesConfig = async (req, res) => {
     if (heading !== undefined) toSet.heading = String(heading || '').trim() || DEFAULTS.heading;
     if (subheading !== undefined) toSet.subheading = String(subheading || '').trim();
     if (ctaText !== undefined) toSet.ctaText = String(ctaText || '').trim() || DEFAULTS.ctaText;
+    if (ctaWhatsappNumber !== undefined) toSet.ctaWhatsappNumber = String(ctaWhatsappNumber || '').trim();
+    if (ctaWhatsappMessage !== undefined) toSet.ctaWhatsappMessage = String(ctaWhatsappMessage || '').trim();
     if (bannerImageUrl !== undefined) toSet.bannerImageUrl = String(bannerImageUrl || '').trim();
     if (bannerText !== undefined) toSet.bannerText = String(bannerText || '').trim();
     if (gridColumns !== undefined) toSet.gridColumns = normalizeGridColumns(gridColumns);
+    if (featuresHeading !== undefined) toSet.featuresHeading = String(featuresHeading || '').trim() || DEFAULTS.featuresHeading;
+    if (instructorsHeading !== undefined) toSet.instructorsHeading = String(instructorsHeading || '').trim() || DEFAULTS.instructorsHeading;
+    if (videosHeading !== undefined) toSet.videosHeading = String(videosHeading || '').trim() || DEFAULTS.videosHeading;
+    if (testimonialsHeading !== undefined) toSet.testimonialsHeading = String(testimonialsHeading || '').trim() || DEFAULTS.testimonialsHeading;
     if (isActive !== undefined) toSet.isActive = Boolean(isActive);
 
     if (stats !== undefined) {
@@ -285,10 +304,16 @@ const upsertPremiumFeaturesConfig = async (req, res) => {
         heading: saved.heading,
         subheading: saved.subheading,
         ctaText: saved.ctaText,
+        ctaWhatsappNumber: saved.ctaWhatsappNumber ?? DEFAULTS.ctaWhatsappNumber,
+        ctaWhatsappMessage: saved.ctaWhatsappMessage ?? DEFAULTS.ctaWhatsappMessage,
         bannerImageUrl: saved.bannerImageUrl ?? DEFAULTS.bannerImageUrl,
         bannerText: saved.bannerText ?? DEFAULTS.bannerText,
         introVideo: saved.introVideo ? normalizeIntroVideo(saved.introVideo) : DEFAULT_INTRO_VIDEO,
         gridColumns: normalizeGridColumns(saved.gridColumns),
+        featuresHeading: saved.featuresHeading || DEFAULTS.featuresHeading,
+        instructorsHeading: saved.instructorsHeading || DEFAULTS.instructorsHeading,
+        videosHeading: saved.videosHeading || DEFAULTS.videosHeading,
+        testimonialsHeading: saved.testimonialsHeading || DEFAULTS.testimonialsHeading,
         features: mapAndSort(saved.features, mapFeature),
         stats: mapAndSort(saved.stats, mapStat),
         videos: mapAndSort(saved.videos, mapVideo),

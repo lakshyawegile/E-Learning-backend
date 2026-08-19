@@ -30,18 +30,29 @@ async function resolveTargetUserIds({ audience, customUsers, newUser, interested
 
     userIds = await User.find({ _id: { $in: validIds }, ...baseFilter }).distinct('_id');
   } else if (audience === 'new') {
-    const mode = newUser?.mode || 'today';
-    const anchor =
-      mode === 'date' && newUser?.date
-        ? startOfDay(new Date(newUser.date))
-        : startOfDay(new Date());
-    const end = new Date(anchor);
-    end.setDate(end.getDate() + 1);
+    if (newUser?.days) {
+      // Matches the dashboard's "New Users (Xd)" stat card exactly: created within the
+      // last N days up to now, rather than a single anchor day.
+      const days = Math.max(1, Math.min(90, parseInt(newUser.days, 10) || 30));
+      const rangeStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      userIds = await User.find({
+        ...baseFilter,
+        createdAt: { $gte: rangeStart },
+      }).distinct('_id');
+    } else {
+      const mode = newUser?.mode || 'today';
+      const anchor =
+        mode === 'date' && newUser?.date
+          ? startOfDay(new Date(newUser.date))
+          : startOfDay(new Date());
+      const end = new Date(anchor);
+      end.setDate(end.getDate() + 1);
 
-    userIds = await User.find({
-      ...baseFilter,
-      createdAt: { $gte: anchor, $lt: end },
-    }).distinct('_id');
+      userIds = await User.find({
+        ...baseFilter,
+        createdAt: { $gte: anchor, $lt: end },
+      }).distinct('_id');
+    }
   } else {
     userIds = await User.find(baseFilter).distinct('_id');
   }

@@ -1,5 +1,5 @@
 const express = require('express');
-const { recordClicks, getHeatmap, getScreens, logEvent, getInstallStats, getClicksSummary, getDashboardSummary, getActiveUsersList } = require('../controllers/analyticsController');
+const { recordClicks, getHeatmap, getScreens, logEvent, getInstallStats, getClicksSummary, getDashboardSummary, getActiveUsersList, getPageEngagementSummary } = require('../controllers/analyticsController');
 const { AnalyticsLogEvent } = require('../models');
 const requireOrgAdmin = require('../middlewares/requireOrgAdmin');
 
@@ -29,6 +29,9 @@ protectedAnalyticsRoutes.get('/dashboard-summary', requireOrgAdmin, getDashboard
 
 // GET /api/analytics/active-users?period=today|week|month&page=&limit= (admin-only)
 protectedAnalyticsRoutes.get('/active-users', requireOrgAdmin, getActiveUsersList);
+
+// GET /api/analytics/page-engagement?days=30 (admin-only) — Premium/One-on-One page views + CTA clicks
+protectedAnalyticsRoutes.get('/page-engagement', requireOrgAdmin, getPageEngagementSummary);
 
 // POST /api/track (public bulk ingestion)
 publicAnalyticsRoutes.post('/track', async (req, res) => {

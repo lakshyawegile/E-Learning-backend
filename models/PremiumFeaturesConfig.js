@@ -100,10 +100,18 @@ const premiumFeaturesConfigSchema = new Schema(
     heading: { type: String, default: 'Go Premium', trim: true },
     subheading: { type: String, default: '', trim: true },
     ctaText: { type: String, default: 'Upgrade Now', trim: true },
+    // Tapping the CTA opens WhatsApp (wa.me/<number>) with this message pre-filled.
+    ctaWhatsappNumber: { type: String, default: '', trim: true },
+    ctaWhatsappMessage: { type: String, default: '', trim: true },
     bannerImageUrl: { type: String, default: '', trim: true },
     bannerText: { type: String, default: '', trim: true },
     introVideo: { type: introVideoSchema, default: () => ({}) },
     gridColumns: { type: Number, enum: [2, 3, 4], default: 2 },
+    // On-page section headings — admin-editable text shown in the app above each list section.
+    featuresHeading: { type: String, default: "What You'll Get", trim: true },
+    instructorsHeading: { type: String, default: 'Meet Your Teachers', trim: true },
+    videosHeading: { type: String, default: 'Top Learning Videos', trim: true },
+    testimonialsHeading: { type: String, default: 'Trusted By Thousands', trim: true },
     features: { type: [featureItemSchema], default: [] },
     stats: { type: [statItemSchema], default: [] },
     videos: { type: [videoItemSchema], default: [] },

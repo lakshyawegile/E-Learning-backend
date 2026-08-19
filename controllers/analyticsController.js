@@ -528,6 +528,57 @@ const getActiveUsersList = async (req, res) => {
   }
 };
 
+// Event name convention used by the app for page-view/CTA-click tracking —
+// logged via the existing POST /api/analytics/log-event with these event_name values.
+const PAGE_ENGAGEMENT_EVENTS = {
+  premium: { view: 'premium_page_view', click: 'premium_cta_click' },
+  oneOnOne: { view: 'one_on_one_page_view', click: 'one_on_one_cta_click' },
+};
+
+async function countAndUnique(eventName, rangeStart) {
+  const match = { event_name: eventName, event_timestamp: { $gte: rangeStart } };
+  const [count, uniqueUserIds] = await Promise.all([
+    AnalyticsLogEvent.countDocuments(match),
+    AnalyticsLogEvent.distinct('userId', { ...match, userId: { $ne: null } }),
+  ]);
+  return { count, uniqueUsers: uniqueUserIds.length };
+}
+
+// GET /api/analytics/page-engagement?days=30 (admin-only)
+const getPageEngagementSummary = async (req, res) => {
+  try {
+    const days = Math.max(1, Math.min(365, parseInt(req.query.days, 10) || 30));
+    const rangeStart = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const [premiumViews, premiumClicks, oneOnOneViews, oneOnOneClicks] = await Promise.all([
+      countAndUnique(PAGE_ENGAGEMENT_EVENTS.premium.view, rangeStart),
+      countAndUnique(PAGE_ENGAGEMENT_EVENTS.premium.click, rangeStart),
+      countAndUnique(PAGE_ENGAGEMENT_EVENTS.oneOnOne.view, rangeStart),
+      countAndUnique(PAGE_ENGAGEMENT_EVENTS.oneOnOne.click, rangeStart),
+    ]);
+
+    return res.json({
+      success: true,
+      days,
+      premium: {
+        views: premiumViews.count,
+        uniqueViewers: premiumViews.uniqueUsers,
+        ctaClicks: premiumClicks.count,
+        uniqueClickers: premiumClicks.uniqueUsers,
+      },
+      oneOnOne: {
+        views: oneOnOneViews.count,
+        uniqueViewers: oneOnOneViews.uniqueUsers,
+        ctaClicks: oneOnOneClicks.count,
+        uniqueClickers: oneOnOneClicks.uniqueUsers,
+      },
+    });
+  } catch (err) {
+    console.error('getPageEngagementSummary error:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   recordClicks,
   getHeatmap,
@@ -538,4 +589,6 @@ module.exports = {
   getClicksSummary,
   getDashboardSummary,
   getActiveUsersList,
+  getPageEngagementSummary,
+  PAGE_ENGAGEMENT_EVENTS,
 };

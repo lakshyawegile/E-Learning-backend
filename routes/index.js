@@ -25,6 +25,7 @@ const seminarRoutes = require('./seminars');
 const assistantRoutes = require('./assistant');
 const webinarScheduleRoutes = require('./webinarSchedules');
 const premiumFeaturesRoutes = require('./premiumFeatures');
+const oneOnOneRoutes = require('./oneOnOne');
 const { logInstall } = require('../controllers/analyticsController');
 const authenticate = require('../middlewares/auth');
 
@@ -77,5 +78,6 @@ router.use('/seminars', authenticate, seminarRoutes);
 router.use('/webinar-schedules', authenticate, webinarScheduleRoutes);
 router.use('/assistant', authenticate, assistantRoutes);
 router.use('/premium-features', authenticate, premiumFeaturesRoutes);
+router.use('/one-on-one', authenticate, oneOnOneRoutes);
 
 module.exports = router;
