@@ -72,8 +72,8 @@ function buildMessage({ token, tokens, title, body, imageUrl, data }) {
           'mutable-content': 1,
         },
       },
-      fcm_options: {
-        image: trimmedImageUrl,
+      fcmOptions: {
+        imageUrl: trimmedImageUrl,
       },
     };
   }

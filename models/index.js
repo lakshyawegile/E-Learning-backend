@@ -37,6 +37,8 @@ const SeminarHomeConfig = require('./SeminarHomeConfig');
 const AssistantStarterConfig = require('./AssistantStarterConfig');
 const AssistantConversation = require('./AssistantConversation');
 const AssistantMessage = require('./AssistantMessage');
+const ScheduledWebinarNotification = require('./ScheduledWebinarNotification');
+const PremiumFeaturesConfig = require('./PremiumFeaturesConfig');
 
 module.exports = {
   Organization,
@@ -78,5 +80,7 @@ module.exports = {
   AssistantStarterConfig,
   AssistantConversation,
   AssistantMessage,
+  ScheduledWebinarNotification,
+  PremiumFeaturesConfig,
 };
 

@@ -20,6 +20,7 @@ if (mongoose.models.AnalyticsLogEvent) {
   analyticsLogEventSchema.index({ organizationId: 1, event_timestamp: -1 });
   analyticsLogEventSchema.index({ event_name: 1, event_timestamp: -1 });
   analyticsLogEventSchema.index({ userId: 1, event_timestamp: -1 });
+  analyticsLogEventSchema.index({ createdAt: 1 });
 
   module.exports = mongoose.model('AnalyticsLogEvent', analyticsLogEventSchema);
 }

@@ -47,23 +47,28 @@ function buildKey({ date, organizationId, event_name }) {
   return `${date}|${String(organizationId)}|${event_name}`;
 }
 
-async function aggregateAndUpsert({ windowStart, windowEnd }) {
-  // Map event_name -> which parameters key to use for aggregation dimension
-  // (lets you answer "which screen?" etc. without storing full parameters)
-  const DIMENSION_KEY_BY_EVENT = {
-    screen_view: 'screen_name',
-    button_tap: 'button_name',
-    shorts_view: 'short_id',
-    view_course_details: 'course_id',
-    video_start: 'video_id',
-    quiz_start: 'quiz_id',
-  };
+// Map event_name -> which parameters key to use for aggregation dimension
+// (lets you answer "which screen?" etc. without storing full parameters)
+const DIMENSION_KEY_BY_EVENT = {
+  screen_view: 'screen_name',
+  button_tap: 'button_name',
+  shorts_view: 'short_id',
+  view_course_details: 'course_id',
+  video_start: 'video_id',
+  quiz_start: 'quiz_id',
+};
 
-  // 1) Aggregate raw events inside the window to get totals and the set of impacted keys.
+async function aggregateAndUpsert({ windowStart, windowEnd }) {
+  // 1) Aggregate raw events inserted inside the window to get totals and the set of impacted keys.
+  // NOTE: this matches on createdAt (server insertion time), not event_timestamp. Client-reported
+  // event_timestamp can arrive far in the past (offline-queued events synced later) - matching on
+  // it here would let the watermark advance past those events before they're ever inserted,
+  // silently dropping them forever. event_timestamp is still used below to bucket into the correct
+  // calendar day; only "have I already scanned this document" is keyed off createdAt.
   const windowGroups = await AnalyticsLogEvent.aggregate([
     {
       $match: {
-        event_timestamp: { $gt: windowStart, $lte: windowEnd },
+        createdAt: { $gt: windowStart, $lte: windowEnd },
       },
     },
     {
@@ -322,5 +327,5 @@ function startAnalyticsCron() {
   return scheduledJob;
 }
 
-module.exports = { startAnalyticsCron };
+module.exports = { startAnalyticsCron, runOnce, aggregateAndUpsert, DIMENSION_KEY_BY_EVENT };
 

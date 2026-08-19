@@ -14,7 +14,7 @@ Rules:
 - Prefer news from the last 24–48 hours. If nothing fresh, use the most recent relevant story.
 - Base the article on real sources you found via web search. Do not invent facts.
 - Write in simple, clear English that a busy trader can understand.
-- "title" must be catchy and short (max ~70 chars) — suitable for a push notification.
+- "title" must be catchy and VERY short — 5 to 6 words MAXIMUM, no more. It is a push notification headline, not a sentence; longer titles get cut off/collapsed on phones. Cut ruthlessly — punchy over descriptive.
 - "description" must be 1–2 short sentences (max ~160 chars) — the notification body / teaser.
 - "content" must be a full readable article (4–8 short paragraphs) summarizing what happened, why it matters for import/export, and any practical takeaway.
 - "linkUrl" must be the best primary source URL you found.
@@ -79,7 +79,11 @@ function parseNewsJson(raw) {
     throw err;
   }
 
-  const title = String(parsed.title || '').trim();
+  let title = String(parsed.title || '').trim();
+  const titleWords = title.split(/\s+/).filter(Boolean);
+  if (titleWords.length > 8) {
+    title = titleWords.slice(0, 8).join(' ');
+  }
   const description = String(parsed.description || '').trim();
   const content = String(parsed.content || '').trim();
   if (!title || !description || !content) {
@@ -105,6 +109,49 @@ function parseNewsJson(raw) {
     imageUrl: String(parsed.imageUrl || '').trim(),
     tags,
   };
+}
+
+function extractMetaImage(html) {
+  const patterns = [
+    /<meta[^>]+property=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:image(?::secure_url)?["']/i,
+    /<meta[^>]+name=["']twitter:image(?::src)?["'][^>]+content=["']([^"']+)["']/i,
+    /<meta[^>]+content=["']([^"']+)["'][^>]+name=["']twitter:image(?::src)?["']/i,
+  ];
+  for (const re of patterns) {
+    const match = html.match(re);
+    if (match?.[1]) return match[1];
+  }
+  return null;
+}
+
+/**
+ * Best-effort scrape of the article page's og:image/twitter:image meta tag,
+ * used as a fallback when OpenAI doesn't return a direct image URL.
+ */
+async function fetchOgImage(pageUrl) {
+  if (!pageUrl) return '';
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(pageUrl, {
+      signal: controller.signal,
+      headers: { 'User-Agent': 'Mozilla/5.0 (compatible; NewsImageBot/1.0)' },
+    });
+    if (!response.ok) return '';
+
+    const html = await response.text();
+    const raw = extractMetaImage(html);
+    if (!raw) return '';
+
+    return new URL(raw, pageUrl).href;
+  } catch (err) {
+    console.warn('[openaiNews] og:image scrape failed:', err.message || err);
+    return '';
+  } finally {
+    clearTimeout(timeout);
+  }
 }
 
 /**
@@ -156,10 +203,17 @@ async function fetchImportExportNews() {
     throw err;
   }
 
-  return parseNewsJson(extractOutputText(data));
+  const news = parseNewsJson(extractOutputText(data));
+
+  if (!news.imageUrl && news.linkUrl) {
+    news.imageUrl = await fetchOgImage(news.linkUrl);
+  }
+
+  return news;
 }
 
 module.exports = {
   fetchImportExportNews,
   parseNewsJson,
+  fetchOgImage,
 };

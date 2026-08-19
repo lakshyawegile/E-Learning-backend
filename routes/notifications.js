@@ -7,9 +7,15 @@ const {
   getUnreadCount,
   markAsRead,
   markAllAsRead,
+  testNewsNotification,
+  testWebinarNotification,
 } = require('../controllers/notificationController');
 
 const router = express.Router();
+
+// TEMP: no auth (parent skips JWT for these paths)
+router.post('/test-news', testNewsNotification);
+router.post('/test-webinar', testWebinarNotification);
 
 router.post('/broadcast', requireOrgAdmin, broadcastNotification);
 router.post('/', requireOrgAdmin, createNotification);

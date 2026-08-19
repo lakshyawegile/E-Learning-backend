@@ -79,7 +79,62 @@ async function notifyAllUsersAboutNews(news) {
   return { sentCount: userIds.length, push, newsId, linkUrl };
 }
 
+/**
+ * Same news notification payload as production, but for a single user (test/temp).
+ */
+async function notifyUserAboutNews(userId, news) {
+  const newsId = String(news._id);
+  const title = String(news.title || '').trim();
+  const body = String(news.description || '').trim();
+  const imageUrl = String(news.imageUrl || '').trim();
+  const linkUrl = `news://${newsId}`;
+  const data = { type: 'news', newsId };
+
+  if (!userId) {
+    return { sentCount: 0, push: { skipped: true, reason: 'NO_USER_ID' }, newsId, linkUrl };
+  }
+  if (!title || !body) {
+    return {
+      sentCount: 0,
+      push: { skipped: true, reason: 'MISSING_TITLE_OR_BODY' },
+      newsId,
+      linkUrl,
+    };
+  }
+
+  const user = await User.findById(userId).select('_id fcmToken').lean();
+  if (!user) {
+    return { sentCount: 0, push: { skipped: true, reason: 'USER_NOT_FOUND' }, newsId, linkUrl };
+  }
+
+  const notification = await Notification.create({
+    userId: user._id,
+    title,
+    body,
+    imageUrl,
+    linkUrl,
+    source: 'NEWS_AUTO',
+    data,
+  });
+
+  const token = user.fcmToken ? String(user.fcmToken).trim() : '';
+  const push = token
+    ? await sendPushBatches([token], { title, body, imageUrl, data })
+    : { successCount: 0, failureCount: 0, skipped: true, reason: 'NO_FCM_TOKEN' };
+
+  return {
+    sentCount: 1,
+    notificationId: String(notification._id),
+    push,
+    newsId,
+    linkUrl,
+    title,
+    body,
+  };
+}
+
 module.exports = {
   notifyAllUsersAboutNews,
+  notifyUserAboutNews,
   sendPushBatches,
 };

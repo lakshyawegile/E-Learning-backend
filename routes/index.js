@@ -23,6 +23,8 @@ const testimonialRoutes = require('./testimonials');
 const configRoutes = require('./config');
 const seminarRoutes = require('./seminars');
 const assistantRoutes = require('./assistant');
+const webinarScheduleRoutes = require('./webinarSchedules');
+const premiumFeaturesRoutes = require('./premiumFeatures');
 const { logInstall } = require('../controllers/analyticsController');
 const authenticate = require('../middlewares/auth');
 
@@ -40,6 +42,17 @@ router.use(publicAnalyticsRoutes);
 router.use('/app-modules', appModuleRoutes);
 router.use('/sheet-sync', sheetSyncRoutes);
 
+// TEMP: skip JWT for test push endpoints under /notifications
+function authenticateUnlessTestNotification(req, res, next) {
+  if (
+    req.method === 'POST' &&
+    (req.path === '/test-news' || req.path === '/test-webinar')
+  ) {
+    return next();
+  }
+  return authenticate(req, res, next);
+}
+
 // Protected routes (require JWT token)
 router.use('/teachers', authenticate, teacherRoutes);
 router.use('/courses', authenticate, courseRoutes);
@@ -53,7 +66,7 @@ router.use('/progress', authenticate, progressRoutes);
 router.use('/analytics', authenticate, protectedAnalyticsRoutes);
 router.use('/news', authenticate, newsRoutes);
 router.use('/user', authenticate, userRoutes);
-router.use('/notifications', authenticate, notificationRoutes);
+router.use('/notifications', authenticateUnlessTestNotification, notificationRoutes);
 router.use('/short-videos', authenticate, shortVideoRoutes);
 router.use('/founder', authenticate, founderRoutes);
 router.use('/journey', authenticate, journeyRoutes);
@@ -61,7 +74,8 @@ router.use('/chat', authenticate, chatRoutes);
 router.use('/testimonials', authenticate, testimonialRoutes);
 router.use('/config', authenticate, configRoutes);
 router.use('/seminars', authenticate, seminarRoutes);
+router.use('/webinar-schedules', authenticate, webinarScheduleRoutes);
 router.use('/assistant', authenticate, assistantRoutes);
+router.use('/premium-features', authenticate, premiumFeaturesRoutes);
 
 module.exports = router;
-

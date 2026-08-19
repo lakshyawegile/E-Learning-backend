@@ -1,4 +1,6 @@
 const { AnalyticsClick, AnalyticsLogEvent, AnalyticsInstall } = require('../analytics');
+const { DailyAnalytics, User } = require('../models');
+const { distinctUserIdsWithActivePremium } = require('../utils/distinctUserIdsWithActivePremium');
 
 const GRID_SIZE_DEFAULT = 10;
 
@@ -356,6 +358,176 @@ const logInstall = async (req, res) => {
   }
 };
 
+// GET /api/analytics/dashboard-summary?days=30
+const getDashboardSummary = async (req, res) => {
+  try {
+    const organizationId = req.user?.organizationId;
+    const days = Math.max(1, Math.min(90, parseInt(req.query.days, 10) || 30));
+
+    const now = new Date();
+    const rangeStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+
+    const userFilter = { role: 'USER' };
+    if (organizationId) userFilter.organizationId = organizationId;
+
+    const [
+      totalUsers,
+      newUsersInRange,
+      totalDownloads,
+      downloadsInRange,
+      downloadsToday,
+      downloadsWeek,
+      downloadsMonth,
+      activeUsersTodayIds,
+      activeUsersWeekIds,
+      activeUsersMonthIds,
+      activeUsersInRangeIds,
+      errorsInRange,
+      downloadsSeries,
+      activeUsersSeries,
+      loginsSeries,
+      appErrorsSeries,
+    ] = await Promise.all([
+      User.countDocuments(userFilter),
+      User.countDocuments({ ...userFilter, createdAt: { $gte: rangeStart } }),
+      AnalyticsInstall.countDocuments({}),
+      AnalyticsInstall.countDocuments({ timestamp: { $gte: rangeStart } }),
+      AnalyticsInstall.countDocuments({ timestamp: { $gte: todayStart } }),
+      AnalyticsInstall.countDocuments({ timestamp: { $gte: weekStart } }),
+      AnalyticsInstall.countDocuments({ timestamp: { $gte: monthStart } }),
+      AnalyticsLogEvent.distinct('userId', { event_timestamp: { $gte: todayStart }, userId: { $ne: null } }),
+      AnalyticsLogEvent.distinct('userId', { event_timestamp: { $gte: weekStart }, userId: { $ne: null } }),
+      AnalyticsLogEvent.distinct('userId', { event_timestamp: { $gte: monthStart }, userId: { $ne: null } }),
+      AnalyticsLogEvent.distinct('userId', { event_timestamp: { $gte: rangeStart }, userId: { $ne: null } }),
+      AnalyticsLogEvent.countDocuments({ event_name: 'app_error', event_timestamp: { $gte: rangeStart } }),
+      AnalyticsInstall.aggregate([
+        { $match: { timestamp: { $gte: rangeStart } } },
+        { $project: { date: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp', timezone: 'UTC' } } } },
+        { $group: { _id: '$date', count: { $sum: 1 } } },
+        { $sort: { _id: 1 } },
+      ]),
+      AnalyticsLogEvent.aggregate([
+        { $match: { event_timestamp: { $gte: rangeStart } } },
+        {
+          $project: {
+            date: { $dateToString: { format: '%Y-%m-%d', date: '$event_timestamp', timezone: 'UTC' } },
+            userId: 1,
+          },
+        },
+        { $group: { _id: '$date', users: { $addToSet: '$userId' } } },
+        { $project: { _id: 0, date: '$_id', count: { $size: { $filter: { input: '$users', as: 'u', cond: { $ne: ['$$u', null] } } } } } },
+        { $sort: { date: 1 } },
+      ]),
+      DailyAnalytics.aggregate([
+        { $match: { event_name: 'login', date: { $gte: rangeStart.toISOString().slice(0, 10) } } },
+        { $group: { _id: '$date', count: { $sum: '$total_count' } } },
+        { $sort: { _id: 1 } },
+      ]),
+      DailyAnalytics.aggregate([
+        { $match: { event_name: 'app_error', date: { $gte: rangeStart.toISOString().slice(0, 10) } } },
+        { $group: { _id: '$date', count: { $sum: '$total_count' } } },
+        { $sort: { _id: 1 } },
+      ]),
+    ]);
+
+    const toSeries = (rows) => rows.map((r) => ({ date: r._id || r.date, count: r.count }));
+
+    return res.json({
+      success: true,
+      days,
+      from: rangeStart.toISOString(),
+      to: now.toISOString(),
+      totals: {
+        totalUsers,
+        newUsersInRange,
+        totalDownloads,
+        downloadsInRange,
+        downloadsToday,
+        downloadsWeek,
+        downloadsMonth,
+        activeUsersToday: activeUsersTodayIds.length,
+        activeUsersWeek: activeUsersWeekIds.length,
+        activeUsersMonth: activeUsersMonthIds.length,
+        activeUsersInRange: activeUsersInRangeIds.length,
+        errorsInRange,
+      },
+      series: {
+        downloads: toSeries(downloadsSeries),
+        activeUsers: activeUsersSeries,
+        logins: toSeries(loginsSeries),
+        appErrors: toSeries(appErrorsSeries),
+      },
+    });
+  } catch (err) {
+    console.error('getDashboardSummary error:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
+// GET /api/analytics/active-users?period=today|week|month&page=1&limit=20
+const getActiveUsersList = async (req, res) => {
+  try {
+    const period = ['today', 'week', 'month'].includes(req.query.period) ? req.query.period : 'today';
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 20));
+
+    const now = new Date();
+    let rangeStart;
+    if (period === 'today') {
+      rangeStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+    } else if (period === 'week') {
+      rangeStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else {
+      rangeStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+
+    const activeUsers = await AnalyticsLogEvent.aggregate([
+      { $match: { event_timestamp: { $gte: rangeStart }, userId: { $ne: null } } },
+      { $group: { _id: '$userId', lastActiveAt: { $max: '$event_timestamp' }, eventCount: { $sum: 1 } } },
+      { $sort: { lastActiveAt: -1 } },
+    ]);
+
+    const total = activeUsers.length;
+    const totalPages = Math.max(1, Math.ceil(total / limit));
+    const pageSlice = activeUsers.slice((page - 1) * limit, (page - 1) * limit + limit);
+
+    const userIds = pageSlice.map((r) => r._id);
+    const [users, premiumSet] = await Promise.all([
+      User.find({ _id: { $in: userIds } }).select('name mobile email createdAt').lean(),
+      distinctUserIdsWithActivePremium(userIds),
+    ]);
+    const userMap = new Map(users.map((u) => [String(u._id), u]));
+
+    const data = pageSlice.map((r) => {
+      const u = userMap.get(String(r._id)) || {};
+      return {
+        userId: r._id,
+        name: u.name || '',
+        mobile: u.mobile || '',
+        email: u.email || '',
+        lastActiveAt: r.lastActiveAt,
+        eventCount: r.eventCount,
+        isPaid: premiumSet.has(String(r._id)),
+      };
+    });
+
+    return res.json({
+      success: true,
+      period,
+      from: rangeStart.toISOString(),
+      to: now.toISOString(),
+      meta: { page, limit, total, totalPages },
+      data,
+    });
+  } catch (err) {
+    console.error('getActiveUsersList error:', err);
+    return res.status(500).json({ success: false, message: 'Internal server error' });
+  }
+};
+
 module.exports = {
   recordClicks,
   getHeatmap,
@@ -364,4 +536,6 @@ module.exports = {
   logInstall,
   getInstallStats,
   getClicksSummary,
+  getDashboardSummary,
+  getActiveUsersList,
 };
