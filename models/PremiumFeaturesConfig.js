@@ -51,9 +51,9 @@ const testimonialItemSchema = new Schema(
 
 const instructorItemSchema = new Schema(
   {
-    videoUrl: { type: String, required: true, trim: true },
-    thumbnailUrl: { type: String, default: '', trim: true },
-    name: { type: String, required: true, trim: true },
+    // Everything here is optional by design — a 16:9 photo card, not a video.
+    imageUrl: { type: String, default: '', trim: true },
+    name: { type: String, default: '', trim: true },
     order: { type: Number, default: 0 },
     isActive: { type: Boolean, default: true },
   },

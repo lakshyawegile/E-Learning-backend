@@ -91,9 +91,8 @@ const mapTestimonial = (t) => ({
 
 const mapInstructor = (t) => ({
   id: String(t._id || t.id || ''),
-  videoUrl: t.videoUrl,
-  thumbnailUrl: t.thumbnailUrl || '',
-  name: t.name,
+  imageUrl: t.imageUrl || '',
+  name: t.name || '',
   order: t.order ?? 0,
 });
 
@@ -167,7 +166,7 @@ const getPremiumFeaturesConfig = async (req, res) => {
 //   stats?: [{ icon?, value, label, order?, isActive? }],
 //   videos?: [{ videoUrl, thumbnailUrl?, duration?, title, order?, isActive? }],
 //   testimonials?: [{ rating?, quote, name, avatarUrl?, order?, isActive? }],
-//   instructors?: [{ videoUrl, thumbnailUrl?, name, order?, isActive? }],
+//   instructors?: [{ imageUrl?, name?, order?, isActive? }], // 16:9 photo card — everything optional
 //   banners?: [{ imageUrl, text?, linkUrl?, position, order?, isActive? }],
 //   introVideo?: { videoUrl?, thumbnailUrl?, title? },
 //   pricing?: { heading?, description?, benefits?, offerBadgeText?, originalPrice?, discountedPrice?, priceNote? },
@@ -266,11 +265,11 @@ const upsertPremiumFeaturesConfig = async (req, res) => {
     if (instructors !== undefined) {
       toSet.instructors = instructors
         .map((t, index) => withOrderAndActive(t, index, {
-          videoUrl: String(t?.videoUrl || '').trim(),
-          thumbnailUrl: String(t?.thumbnailUrl || '').trim(),
+          imageUrl: String(t?.imageUrl || '').trim(),
           name: String(t?.name || '').trim(),
         }))
-        .filter((t) => t.videoUrl && t.name);
+        // Everything is optional — only drop a row that's entirely blank.
+        .filter((t) => t.imageUrl || t.name);
     }
 
     if (banners !== undefined) {
