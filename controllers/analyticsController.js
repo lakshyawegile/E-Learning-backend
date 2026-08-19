@@ -358,17 +358,22 @@ const logInstall = async (req, res) => {
   }
 };
 
-// GET /api/analytics/dashboard-summary?days=30
+// GET /api/analytics/dashboard-summary?days=30|all
 const getDashboardSummary = async (req, res) => {
   try {
     const organizationId = req.user?.organizationId;
-    const days = Math.max(1, Math.min(90, parseInt(req.query.days, 10) || 30));
+    // 'all' = lifetime (since the app/account was created) — no lower bound on the range.
+    // Trend charts switch to monthly buckets in this mode so "all time" doesn't render
+    // thousands of daily points for an app that's been running for years.
+    const isAllTime = req.query.days === 'all';
+    const days = isAllTime ? null : Math.max(1, Math.min(90, parseInt(req.query.days, 10) || 30));
 
     const now = new Date();
-    const rangeStart = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    const rangeStart = isAllTime ? new Date(0) : new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     const todayStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const monthStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const seriesDateFormat = isAllTime ? '%Y-%m' : '%Y-%m-%d';
 
     const userFilter = { role: 'USER' };
     if (organizationId) userFilter.organizationId = organizationId;
@@ -405,7 +410,7 @@ const getDashboardSummary = async (req, res) => {
       AnalyticsLogEvent.countDocuments({ event_name: 'app_error', event_timestamp: { $gte: rangeStart } }),
       AnalyticsInstall.aggregate([
         { $match: { timestamp: { $gte: rangeStart } } },
-        { $project: { date: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp', timezone: 'UTC' } } } },
+        { $project: { date: { $dateToString: { format: seriesDateFormat, date: '$timestamp', timezone: 'UTC' } } } },
         { $group: { _id: '$date', count: { $sum: 1 } } },
         { $sort: { _id: 1 } },
       ]),
@@ -413,7 +418,7 @@ const getDashboardSummary = async (req, res) => {
         { $match: { event_timestamp: { $gte: rangeStart } } },
         {
           $project: {
-            date: { $dateToString: { format: '%Y-%m-%d', date: '$event_timestamp', timezone: 'UTC' } },
+            date: { $dateToString: { format: seriesDateFormat, date: '$event_timestamp', timezone: 'UTC' } },
             userId: 1,
           },
         },
@@ -423,12 +428,16 @@ const getDashboardSummary = async (req, res) => {
       ]),
       DailyAnalytics.aggregate([
         { $match: { event_name: 'login', date: { $gte: rangeStart.toISOString().slice(0, 10) } } },
-        { $group: { _id: '$date', count: { $sum: '$total_count' } } },
+        // DailyAnalytics.date is already a "YYYY-MM-DD" string; for all-time, re-bucket to
+        // "YYYY-MM" via substring instead of re-deriving from a raw timestamp field.
+        { $project: { bucket: isAllTime ? { $substrCP: ['$date', 0, 7] } : '$date', total_count: 1 } },
+        { $group: { _id: '$bucket', count: { $sum: '$total_count' } } },
         { $sort: { _id: 1 } },
       ]),
       DailyAnalytics.aggregate([
         { $match: { event_name: 'app_error', date: { $gte: rangeStart.toISOString().slice(0, 10) } } },
-        { $group: { _id: '$date', count: { $sum: '$total_count' } } },
+        { $project: { bucket: isAllTime ? { $substrCP: ['$date', 0, 7] } : '$date', total_count: 1 } },
+        { $group: { _id: '$bucket', count: { $sum: '$total_count' } } },
         { $sort: { _id: 1 } },
       ]),
     ]);
@@ -437,7 +446,8 @@ const getDashboardSummary = async (req, res) => {
 
     return res.json({
       success: true,
-      days,
+      days: isAllTime ? 'all' : days,
+      seriesGranularity: isAllTime ? 'month' : 'day',
       from: rangeStart.toISOString(),
       to: now.toISOString(),
       totals: {
@@ -467,10 +477,10 @@ const getDashboardSummary = async (req, res) => {
   }
 };
 
-// GET /api/analytics/active-users?period=today|week|month&page=1&limit=20
+// GET /api/analytics/active-users?period=today|week|month|year|all&page=1&limit=20
 const getActiveUsersList = async (req, res) => {
   try {
-    const period = ['today', 'week', 'month'].includes(req.query.period) ? req.query.period : 'today';
+    const period = ['today', 'week', 'month', 'year', 'all'].includes(req.query.period) ? req.query.period : 'today';
     const page = Math.max(1, parseInt(req.query.page, 10) || 1);
     const limit = Math.max(1, Math.min(100, parseInt(req.query.limit, 10) || 20));
 
@@ -480,8 +490,13 @@ const getActiveUsersList = async (req, res) => {
       rangeStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
     } else if (period === 'week') {
       rangeStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    } else {
+    } else if (period === 'month') {
       rangeStart = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    } else if (period === 'year') {
+      rangeStart = new Date(now.getTime() - 365 * 24 * 60 * 60 * 1000);
+    } else {
+      // 'all' — lifetime, since the app/account was created.
+      rangeStart = new Date(0);
     }
 
     const activeUsers = await AnalyticsLogEvent.aggregate([
