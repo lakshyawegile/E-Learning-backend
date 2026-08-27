@@ -1,4 +1,4 @@
-const { SocialLinksConfig } = require('../models');
+const { SocialLinksConfig, Organization } = require('../models');
 
 const emptyResponse = () => ({
   whatsapp_number: '',
@@ -12,10 +12,19 @@ const emptyResponse = () => ({
   support_email: '',
 });
 
+const resolveDefaultOrganizationId = async () => {
+  const envOrgId = process.env.SOCIAL_LINKS_ORGANIZATION_ID || '';
+  if (envOrgId) return envOrgId;
+  const org = await Organization.findOne({ status: 'ACTIVE' }).select('_id').lean();
+  return org ? String(org._id) : '';
+};
+
 const getSocialLinks = async (req, res) => {
   try {
-    const organizationId = req.user?.organizationId;
-    if (!organizationId) return res.status(400).json({ message: 'User organization not found' });
+    const organizationId = req.user?.organizationId || (await resolveDefaultOrganizationId());
+    if (!organizationId) {
+      return res.json({ success: true, data: emptyResponse() });
+    }
 
     const doc = await SocialLinksConfig.findOne({ organizationId, isActive: true }).lean();
     return res.json({

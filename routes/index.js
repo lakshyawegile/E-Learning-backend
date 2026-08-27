@@ -27,6 +27,7 @@ const webinarScheduleRoutes = require('./webinarSchedules');
 const premiumFeaturesRoutes = require('./premiumFeatures');
 const oneOnOneRoutes = require('./oneOnOne');
 const { logInstall } = require('../controllers/analyticsController');
+const { getSocialLinks } = require('../controllers/socialLinksController');
 const authenticate = require('../middlewares/auth');
 
 const router = express.Router();
@@ -42,6 +43,8 @@ router.post('/analytics/log-install', logInstall);
 router.use(publicAnalyticsRoutes);
 router.use('/app-modules', appModuleRoutes);
 router.use('/sheet-sync', sheetSyncRoutes);
+// Public: works with or without a token (uses req.user's org if logged in, else the default org)
+router.get('/config/social-links', authenticate.optional, getSocialLinks);
 
 // TEMP: skip JWT for test push endpoints under /notifications
 function authenticateUnlessTestNotification(req, res, next) {
