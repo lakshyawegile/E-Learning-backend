@@ -4,7 +4,7 @@ const paginate = require('../utils/pagination');
 // POST /api/cto-banners
 const createCtoBanner = async (req, res) => {
   try {
-    const { organizationId, title, description, ctaText, ctaUrl, imageUrl, isActive, createdBy } = req.body;
+    const { organizationId, title, type, description, ctaText, ctaUrl, imageUrl, isActive, createdBy } = req.body;
     if (!organizationId || !title || !ctaText || !ctaUrl || !createdBy) {
       return res.status(400).json({ message: 'organizationId, title, ctaText, ctaUrl, and createdBy are required' });
     }
@@ -12,6 +12,7 @@ const createCtoBanner = async (req, res) => {
     const banner = await CtoBanner.create({
       organizationId,
       title,
+      type: type || 'CAROUSEL',
       description,
       ctaText,
       ctaUrl,
