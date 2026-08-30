@@ -50,6 +50,36 @@ const listCtoBanners = async (req, res) => {
   }
 };
 
+// PUT /api/cto-banners/:bannerId
+const updateCtoBanner = async (req, res) => {
+  try {
+    const { bannerId } = req.params;
+    const { title, type, description, ctaText, ctaUrl, imageUrl, isActive } = req.body;
+
+    const updates = {};
+    if (title !== undefined) updates.title = title;
+    if (type !== undefined) updates.type = type;
+    if (description !== undefined) updates.description = description;
+    if (ctaText !== undefined) updates.ctaText = ctaText;
+    if (ctaUrl !== undefined) updates.ctaUrl = ctaUrl;
+    if (imageUrl !== undefined) updates.imageUrl = imageUrl;
+    if (isActive !== undefined) updates.isActive = isActive;
+
+    const banner = await CtoBanner.findByIdAndUpdate(
+      bannerId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+    if (!banner) {
+      return res.status(404).json({ message: 'Banner not found' });
+    }
+    return res.json(banner);
+  } catch (err) {
+    console.error('updateCtoBanner error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
 // DELETE /api/cto-banners/:bannerId
 const deleteCtoBanner = async (req, res) => {
   try {
@@ -68,6 +98,7 @@ const deleteCtoBanner = async (req, res) => {
 module.exports = {
   createCtoBanner,
   listCtoBanners,
+  updateCtoBanner,
   deleteCtoBanner,
 };
 
