@@ -1,4 +1,5 @@
 const { PremiumFeaturesConfig } = require('../models');
+const { deleteOrphanedMedia } = require('../utils/mediaCleanup');
 
 const DEFAULTS = {
   heading: 'Go Premium',
@@ -110,6 +111,22 @@ const normalizeIntroVideo = (v) => ({
   thumbnailUrl: String(v?.thumbnailUrl || '').trim(),
   title: String(v?.title || '').trim(),
 });
+
+// Array sub-document _ids are regenerated on every save (the frontend
+// strips them before sending), so orphaned uploads can't be matched by id —
+// diff the full set of image URLs present before vs. after instead.
+const collectImageUrls = (config) => {
+  if (!config) return [];
+  return [
+    config.bannerImageUrl,
+    config.introVideo?.thumbnailUrl,
+    ...(config.features || []).map((f) => f.imageUrl),
+    ...(config.videos || []).map((v) => v.thumbnailUrl),
+    ...(config.testimonials || []).map((t) => t.avatarUrl),
+    ...(config.instructors || []).map((i) => i.imageUrl),
+    ...(config.banners || []).map((b) => b.imageUrl),
+  ].filter(Boolean);
+};
 
 const normalizePricing = (p) => ({
   heading: String(p?.heading || '').trim() || DEFAULT_PRICING.heading,
@@ -291,11 +308,15 @@ const upsertPremiumFeaturesConfig = async (req, res) => {
       toSet.pricing = normalizePricing(pricing);
     }
 
+    const previous = await PremiumFeaturesConfig.findOne({ organizationId }).lean();
+
     const saved = await PremiumFeaturesConfig.findOneAndUpdate(
       { organizationId },
       { $set: toSet },
       { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
     ).lean();
+
+    deleteOrphanedMedia(collectImageUrls(previous), collectImageUrls(saved));
 
     return res.json({
       success: true,

@@ -1,5 +1,6 @@
 const { Testimonial } = require('../models');
 const paginate = require('../utils/pagination');
+const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
 
 const hasAnyContent = ({ imageUrl, videoUrl, title, description }) =>
   Boolean(
@@ -115,6 +116,11 @@ const updateTestimonial = async (req, res) => {
       { $set: updates },
       { new: true, runValidators: true }
     );
+
+    if (imageUrl !== undefined && existing.imageUrl && existing.imageUrl !== updates.imageUrl) {
+      deleteMediaIfOwned(existing.imageUrl);
+    }
+
     return res.json(doc);
   } catch (err) {
     console.error('updateTestimonial error:', err);
@@ -131,6 +137,11 @@ const deleteTestimonial = async (req, res) => {
     const { testimonialId } = req.params;
     const deleted = await Testimonial.findOneAndDelete({ _id: testimonialId, organizationId });
     if (!deleted) return res.status(404).json({ message: 'Testimonial not found' });
+
+    if (deleted.imageUrl) {
+      deleteMediaIfOwned(deleted.imageUrl);
+    }
+
     return res.json({ message: 'Testimonial deleted' });
   } catch (err) {
     console.error('deleteTestimonial error:', err);

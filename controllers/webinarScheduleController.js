@@ -1,6 +1,7 @@
 const { Types } = require('mongoose');
 const { ScheduledWebinarNotification, Seminar } = require('../models');
 const paginate = require('../utils/pagination');
+const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
 
 const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -221,6 +222,8 @@ const updateWebinarSchedule = async (req, res) => {
       isActive,
     } = req.body || {};
 
+    const previousImageUrl = job.imageUrl;
+
     if (title !== undefined) job.title = String(title || '').trim();
     if (body !== undefined || message !== undefined) {
       job.body = String(body ?? message ?? '').trim();
@@ -263,6 +266,10 @@ const updateWebinarSchedule = async (req, res) => {
 
     await job.save();
 
+    if (previousImageUrl && previousImageUrl !== job.imageUrl) {
+      deleteMediaIfOwned(previousImageUrl);
+    }
+
     return res.json({
       success: true,
       message: 'Schedule updated',
@@ -295,6 +302,10 @@ const cancelWebinarSchedule = async (req, res) => {
     });
     if (!deleted) {
       return res.status(404).json({ success: false, message: 'Schedule not found' });
+    }
+
+    if (deleted.imageUrl) {
+      deleteMediaIfOwned(deleted.imageUrl);
     }
 
     return res.json({

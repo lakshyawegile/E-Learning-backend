@@ -1,5 +1,6 @@
 const { News } = require('../models');
 const paginate = require('../utils/pagination');
+const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
 
 // POST /api/news
 const createNews = async (req, res) => {
@@ -96,10 +97,19 @@ const updateNews = async (req, res) => {
     if (tags !== undefined) updates.tags = tags;
     if (isPublished !== undefined) updates.isPublished = isPublished;
 
+    const previous = imageUrl !== undefined
+      ? await News.findById(newsId).select('imageUrl').lean()
+      : null;
+
     const news = await News.findByIdAndUpdate(newsId, { $set: updates }, { new: true, runValidators: true });
     if (!news) {
       return res.status(404).json({ message: 'News not found' });
     }
+
+    if (previous && previous.imageUrl && previous.imageUrl !== imageUrl) {
+      deleteMediaIfOwned(previous.imageUrl);
+    }
+
     return res.json(news);
   } catch (err) {
     console.error('updateNews error:', err);
@@ -115,6 +125,11 @@ const deleteNews = async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ message: 'News not found' });
     }
+
+    if (deleted.imageUrl) {
+      deleteMediaIfOwned(deleted.imageUrl);
+    }
+
     return res.json({ message: 'News deleted' });
   } catch (err) {
     console.error('deleteNews error:', err);

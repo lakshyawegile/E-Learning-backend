@@ -28,6 +28,7 @@ const premiumFeaturesRoutes = require('./premiumFeatures');
 const oneOnOneRoutes = require('./oneOnOne');
 const { logInstall } = require('../controllers/analyticsController');
 const { getSocialLinks } = require('../controllers/socialLinksController');
+const { uploadSingleImage, uploadImage, serveMediaImage } = require('../controllers/mediaController');
 const authenticate = require('../middlewares/auth');
 
 const router = express.Router();
@@ -45,6 +46,8 @@ router.use('/app-modules', appModuleRoutes);
 router.use('/sheet-sync', sheetSyncRoutes);
 // Public: works with or without a token (uses req.user's org if logged in, else the default org)
 router.get('/config/social-links', authenticate.optional, getSocialLinks);
+// Public: streams the raw image bytes straight from S3, no JSON envelope
+router.get('/media/:folder/:filename', serveMediaImage);
 
 // TEMP: skip JWT for test push endpoints under /notifications
 function authenticateUnlessTestNotification(req, res, next) {
@@ -82,5 +85,6 @@ router.use('/webinar-schedules', authenticate, webinarScheduleRoutes);
 router.use('/assistant', authenticate, assistantRoutes);
 router.use('/premium-features', authenticate, premiumFeaturesRoutes);
 router.use('/one-on-one', authenticate, oneOnOneRoutes);
+router.post('/media/upload', authenticate, uploadSingleImage, uploadImage);
 
 module.exports = router;

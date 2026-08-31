@@ -1,4 +1,5 @@
 const { OneOnOneConfig } = require('../models');
+const { deleteOrphanedMedia } = require('../utils/mediaCleanup');
 
 const DEFAULTS = {
   heading: 'One-on-One Hand-Holding Classes',
@@ -78,6 +79,17 @@ const normalizeHeroVideo = (v) => ({
   thumbnailUrl: String(v?.thumbnailUrl || '').trim(),
   ctaText: String(v?.ctaText || '').trim(),
 });
+
+// Array sub-document _ids are regenerated on every save (the frontend
+// strips them before sending), so orphaned uploads can't be matched by id —
+// diff the full set of image (thumbnail) URLs present before vs. after instead.
+const collectThumbnailUrls = (config) => {
+  if (!config) return [];
+  return [
+    config.heroVideo?.thumbnailUrl,
+    ...(config.experienceVideos || []).map((v) => v.thumbnailUrl),
+  ].filter(Boolean);
+};
 
 const normalizePricing = (p) => ({
   heading: String(p?.heading || '').trim(),
@@ -242,11 +254,15 @@ const upsertOneOnOneConfig = async (req, res) => {
       toSet.pricing = normalizePricing(pricing);
     }
 
+    const previous = await OneOnOneConfig.findOne({ organizationId }).lean();
+
     const saved = await OneOnOneConfig.findOneAndUpdate(
       { organizationId },
       { $set: toSet },
       { upsert: true, new: true, setDefaultsOnInsert: true, runValidators: true }
     ).lean();
+
+    deleteOrphanedMedia(collectThumbnailUrls(previous), collectThumbnailUrls(saved));
 
     return res.json({
       success: true,

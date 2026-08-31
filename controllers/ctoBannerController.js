@@ -1,5 +1,6 @@
 const { CtoBanner } = require('../models');
 const paginate = require('../utils/pagination');
+const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
 
 // POST /api/cto-banners
 const createCtoBanner = async (req, res) => {
@@ -65,6 +66,10 @@ const updateCtoBanner = async (req, res) => {
     if (imageUrl !== undefined) updates.imageUrl = imageUrl;
     if (isActive !== undefined) updates.isActive = isActive;
 
+    const previous = imageUrl !== undefined
+      ? await CtoBanner.findById(bannerId).select('imageUrl').lean()
+      : null;
+
     const banner = await CtoBanner.findByIdAndUpdate(
       bannerId,
       { $set: updates },
@@ -73,6 +78,11 @@ const updateCtoBanner = async (req, res) => {
     if (!banner) {
       return res.status(404).json({ message: 'Banner not found' });
     }
+
+    if (previous && previous.imageUrl && previous.imageUrl !== imageUrl) {
+      deleteMediaIfOwned(previous.imageUrl);
+    }
+
     return res.json(banner);
   } catch (err) {
     console.error('updateCtoBanner error:', err);
@@ -88,6 +98,11 @@ const deleteCtoBanner = async (req, res) => {
     if (!deleted) {
       return res.status(404).json({ message: 'Banner not found' });
     }
+
+    if (deleted.imageUrl) {
+      deleteMediaIfOwned(deleted.imageUrl);
+    }
+
     return res.json({ message: 'Banner deleted' });
   } catch (err) {
     console.error('deleteCtoBanner error:', err);

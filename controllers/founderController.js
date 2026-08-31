@@ -1,4 +1,5 @@
 const { FounderInfo } = require('../models');
+const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
 
 // GET /api/founder (org-wise; requires JWT since org comes from token)
 const getFounderInfo = async (req, res) => {
@@ -46,11 +47,19 @@ const upsertFounderInfo = async (req, res) => {
     if (videoUrl !== undefined) toSet.videoUrl = String(videoUrl).trim();
     if (isActive !== undefined) toSet.isActive = Boolean(isActive);
 
+    const previous = imageUrl !== undefined
+      ? await FounderInfo.findOne({ organizationId }).select('imageUrl').lean()
+      : null;
+
     const saved = await FounderInfo.findOneAndUpdate(
       { organizationId },
       { $set: { organizationId, ...toSet } },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     ).lean();
+
+    if (previous && previous.imageUrl && previous.imageUrl !== toSet.imageUrl) {
+      deleteMediaIfOwned(previous.imageUrl);
+    }
 
     return res.json({
       success: true,
