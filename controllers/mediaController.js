@@ -2,7 +2,7 @@ const crypto = require('crypto');
 const multer = require('multer');
 const sharp = require('sharp');
 const { PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
-const { getS3Client } = require('../utils/s3Client');
+const { getS3Client, getPublicS3Url } = require('../utils/s3Client');
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const EXT_BY_MIME = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -71,8 +71,11 @@ const uploadImage = async (req, res) => {
       ContentType: req.file.mimetype,
     }));
 
-    const base = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
-    return res.status(201).json({ url: `${base}/api/media/${key}` });
+    // Return S3's own (https) URL directly rather than proxying through our
+    // own http-only backend — avoids mixed-content blocks on an
+    // https-served admin dashboard. Requires the bucket to grant public
+    // read on these keys (see bucket policy).
+    return res.status(201).json({ url: getPublicS3Url(key) });
   } catch (err) {
     console.error('uploadImage error:', err);
     return res.status(500).json({ message: 'Internal server error' });
