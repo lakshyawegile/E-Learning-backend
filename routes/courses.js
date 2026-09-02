@@ -1,5 +1,5 @@
 const express = require('express');
-const { getCourses, getCourseById, getMyEnrolledCourses } = require('../controllers/courseController');
+const { getCourses, getCourseById, getMyEnrolledCourses, updateCourse } = require('../controllers/courseController');
 const {
   createLesson,
   listLessonsByCourse,
@@ -28,6 +28,7 @@ router.get('/:courseId/lessons/:lessonId', getLessonById);
 router.put('/:courseId/lessons/:lessonId', updateLesson);
 router.delete('/:courseId/lessons/:lessonId', deleteLesson);
 router.get('/:courseId', getCourseById);
+router.put('/:courseId', updateCourse);
 
 module.exports = router;
 

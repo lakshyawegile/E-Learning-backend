@@ -1,5 +1,6 @@
 const { Course, Lesson, Enrollment, Progress } = require('../models');
 const paginate = require('../utils/pagination');
+const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
 
 // GET /api/courses
 const getCourses = async (req, res) => {
@@ -101,5 +102,42 @@ const getMyEnrolledCourses = async (req, res) => {
   }
 };
 
-module.exports = { getCourses, getCourseById, getMyEnrolledCourses };
+// PUT /api/courses/:courseId
+const updateCourse = async (req, res) => {
+  try {
+    const { courseId } = req.params;
+    const { title, description, imageUrl, basePrice, isPublished } = req.body || {};
+
+    const updates = {};
+    if (title !== undefined) updates.title = String(title).trim();
+    if (description !== undefined) updates.description = String(description).trim();
+    if (imageUrl !== undefined) updates.imageUrl = String(imageUrl).trim();
+    if (basePrice !== undefined) updates.basePrice = Number(basePrice);
+    if (isPublished !== undefined) updates.isPublished = Boolean(isPublished);
+
+    const previous = imageUrl !== undefined
+      ? await Course.findById(courseId).select('imageUrl').lean()
+      : null;
+
+    const course = await Course.findByIdAndUpdate(
+      courseId,
+      { $set: updates },
+      { new: true, runValidators: true }
+    );
+    if (!course) {
+      return res.status(404).json({ message: 'Course not found' });
+    }
+
+    if (previous && previous.imageUrl && previous.imageUrl !== updates.imageUrl) {
+      deleteMediaIfOwned(previous.imageUrl);
+    }
+
+    return res.json(course);
+  } catch (err) {
+    console.error('updateCourse error:', err);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
+};
+
+module.exports = { getCourses, getCourseById, getMyEnrolledCourses, updateCourse };
 
