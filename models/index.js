@@ -38,6 +38,7 @@ const AssistantStarterConfig = require('./AssistantStarterConfig');
 const AssistantConversation = require('./AssistantConversation');
 const AssistantMessage = require('./AssistantMessage');
 const ScheduledWebinarNotification = require('./ScheduledWebinarNotification');
+const ScheduledNotification = require('./ScheduledNotification');
 const PremiumFeaturesConfig = require('./PremiumFeaturesConfig');
 const OneOnOneConfig = require('./OneOnOneConfig');
 
@@ -82,6 +83,7 @@ module.exports = {
   AssistantConversation,
   AssistantMessage,
   ScheduledWebinarNotification,
+  ScheduledNotification,
   PremiumFeaturesConfig,
   OneOnOneConfig,
 };

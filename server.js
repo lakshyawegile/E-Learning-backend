@@ -4,6 +4,7 @@ const connectDB = require('./config/db');
 const { startAnalyticsCron } = require('./jobs/analyticsCron');
 const { startNewsCron } = require('./jobs/newsCron');
 const { startWebinarNotifyCron } = require('./jobs/webinarNotifyCron');
+const { startScheduledNotificationCron } = require('./jobs/scheduledNotificationCron');
 const http = require('http');
 const { Server } = require('socket.io');
 const { registerChatSocket } = require('./sockets/chatSocket');
@@ -16,6 +17,7 @@ const startServer = async () => {
     startAnalyticsCron();
     startNewsCron();
     startWebinarNotifyCron();
+    startScheduledNotificationCron();
     const server = http.createServer(app);
 
     const io = new Server(server, {
