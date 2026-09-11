@@ -26,6 +26,7 @@ const assistantRoutes = require('./assistant');
 const webinarScheduleRoutes = require('./webinarSchedules');
 const premiumFeaturesRoutes = require('./premiumFeatures');
 const oneOnOneRoutes = require('./oneOnOne');
+const profileQuestionRoutes = require('./profileQuestions');
 const { logInstall } = require('../controllers/analyticsController');
 const { getSocialLinks } = require('../controllers/socialLinksController');
 const { uploadSingleImage, uploadImage, serveMediaImage } = require('../controllers/mediaController');
@@ -85,6 +86,7 @@ router.use('/webinar-schedules', authenticate, webinarScheduleRoutes);
 router.use('/assistant', authenticate, assistantRoutes);
 router.use('/premium-features', authenticate, premiumFeaturesRoutes);
 router.use('/one-on-one', authenticate, oneOnOneRoutes);
+router.use('/profile-questions', authenticate, profileQuestionRoutes);
 router.post('/media/upload', authenticate, uploadSingleImage, uploadImage);
 
 module.exports = router;

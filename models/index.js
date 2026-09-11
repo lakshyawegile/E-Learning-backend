@@ -41,6 +41,8 @@ const ScheduledWebinarNotification = require('./ScheduledWebinarNotification');
 const ScheduledNotification = require('./ScheduledNotification');
 const PremiumFeaturesConfig = require('./PremiumFeaturesConfig');
 const OneOnOneConfig = require('./OneOnOneConfig');
+const ProfileQuestionConfig = require('./ProfileQuestionConfig');
+const UserProfileAnswers = require('./UserProfileAnswers');
 
 module.exports = {
   Organization,
@@ -86,5 +88,7 @@ module.exports = {
   ScheduledNotification,
   PremiumFeaturesConfig,
   OneOnOneConfig,
+  ProfileQuestionConfig,
+  UserProfileAnswers,
 };
 

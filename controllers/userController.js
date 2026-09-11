@@ -1,5 +1,6 @@
-const { User, Enrollment, Progress, QuizAttempt, Course } = require('../models');
+const { User, Enrollment, Progress, QuizAttempt, Course, UserProfileAnswers } = require('../models');
 const { distinctUserIdsWithActivePremium } = require('../utils/distinctUserIdsWithActivePremium');
+const { buildProfileAnswersMap } = require('../utils/profileAnswerFormat');
 
 // GET /api/user/profile
 const getProfile = async (req, res) => {
@@ -137,7 +138,7 @@ const listUsersAdmin = async (req, res) => {
 
     const userIds = users.map((u) => u._id);
     const now = new Date();
-    const [enrollments, premiumUserIds] = await Promise.all([
+    const [enrollments, premiumUserIds, profileAnswerDocs] = await Promise.all([
       Enrollment.find(
         { userId: { $in: userIds } },
         { userId: 1, courseId: 1, finalPricePaid: 1, status: 1 }
@@ -145,6 +146,10 @@ const listUsersAdmin = async (req, res) => {
         .populate('courseId', 'title basePrice')
         .lean(),
       distinctUserIdsWithActivePremium(userIds, now),
+      UserProfileAnswers.find(
+        { userId: { $in: userIds } },
+        { userId: 1, answers: 1, completionPercentage: 1, isComplete: 1 }
+      ).lean(),
     ]);
 
     const enrollmentMap = new Map();
@@ -161,6 +166,8 @@ const listUsersAdmin = async (req, res) => {
       });
     }
 
+    const profileAnswersMap = buildProfileAnswersMap(profileAnswerDocs);
+
     const data = users.map((u) => ({
       _id: u._id,
       name: u.name,
@@ -171,6 +178,9 @@ const listUsersAdmin = async (req, res) => {
       isActive: u.isActive,
       createdAt: u.createdAt,
       interestedIn: u.interestedIn ?? '',
+      profileAnswers: profileAnswersMap.get(String(u._id))?.answers || {},
+      profileCompletionPercentage: profileAnswersMap.get(String(u._id))?.completionPercentage ?? 0,
+      profileIsComplete: profileAnswersMap.get(String(u._id))?.isComplete ?? false,
       subscriptionTier: premiumUserIds.has(String(u._id)) ? 'premium' : 'free',
       courses: enrollmentMap.get(String(u._id)) || [],
     }));
@@ -222,7 +232,7 @@ const exportUsersAdmin = async (req, res) => {
 
     const userIds = users.map((u) => u._id);
     const now = new Date();
-    const [enrollments, premiumUserIds] = await Promise.all([
+    const [enrollments, premiumUserIds, profileAnswerDocs] = await Promise.all([
       Enrollment.find(
         { userId: { $in: userIds } },
         { userId: 1, courseId: 1, finalPricePaid: 1, status: 1 }
@@ -230,6 +240,10 @@ const exportUsersAdmin = async (req, res) => {
         .populate('courseId', 'title basePrice')
         .lean(),
       distinctUserIdsWithActivePremium(userIds, now),
+      UserProfileAnswers.find(
+        { userId: { $in: userIds } },
+        { userId: 1, answers: 1, completionPercentage: 1, isComplete: 1 }
+      ).lean(),
     ]);
 
     const enrollmentMap = new Map();
@@ -246,6 +260,8 @@ const exportUsersAdmin = async (req, res) => {
       });
     }
 
+    const profileAnswersMap = buildProfileAnswersMap(profileAnswerDocs);
+
     const data = users.map((u) => ({
       _id: u._id,
       name: u.name,
@@ -256,6 +272,9 @@ const exportUsersAdmin = async (req, res) => {
       isActive: u.isActive,
       createdAt: u.createdAt,
       interestedIn: u.interestedIn ?? '',
+      profileAnswers: profileAnswersMap.get(String(u._id))?.answers || {},
+      profileCompletionPercentage: profileAnswersMap.get(String(u._id))?.completionPercentage ?? 0,
+      profileIsComplete: profileAnswersMap.get(String(u._id))?.isComplete ?? false,
       subscriptionTier: premiumUserIds.has(String(u._id)) ? 'premium' : 'free',
       courses: enrollmentMap.get(String(u._id)) || [],
     }));
