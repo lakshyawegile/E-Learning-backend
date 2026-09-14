@@ -13,11 +13,15 @@ async function notifyAllUsersAboutWebinar({
   imageUrl = '',
   linkUrl = '',
   seminarId = null,
+  meetingUrl = '',
+  meetingPasscode = '',
 }) {
   const notificationTitle = String(title || '').trim();
   const notificationBody = String(body || '').trim();
   const notificationImageUrl = String(imageUrl || '').trim();
   const seminarIdStr = seminarId ? String(seminarId) : '';
+  const meetingUrlStr = String(meetingUrl || '').trim();
+  const meetingPasscodeStr = String(meetingPasscode || '').trim();
   const resolvedLinkUrl =
     String(linkUrl || '').trim() ||
     (seminarIdStr ? `webinar://${seminarIdStr}` : '');
@@ -26,6 +30,8 @@ async function notifyAllUsersAboutWebinar({
     type: 'webinar',
     ...(seminarIdStr ? { seminarId: seminarIdStr } : {}),
     ...(resolvedLinkUrl ? { linkUrl: resolvedLinkUrl } : {}),
+    ...(meetingUrlStr ? { meetingUrl: meetingUrlStr } : {}),
+    ...(meetingPasscodeStr ? { meetingPasscode: meetingPasscodeStr } : {}),
   };
 
   if (!notificationTitle || !notificationBody) {
@@ -91,11 +97,15 @@ async function notifyUserAboutWebinar(userId, {
   imageUrl = '',
   linkUrl = '',
   seminarId = null,
+  meetingUrl = '',
+  meetingPasscode = '',
 } = {}) {
   const notificationTitle = String(title || '').trim();
   const notificationBody = String(body || '').trim();
   const notificationImageUrl = String(imageUrl || '').trim();
   const seminarIdStr = seminarId ? String(seminarId) : '';
+  const meetingUrlStr = String(meetingUrl || '').trim();
+  const meetingPasscodeStr = String(meetingPasscode || '').trim();
   const resolvedLinkUrl =
     String(linkUrl || '').trim() ||
     (seminarIdStr ? `webinar://${seminarIdStr}` : '');
@@ -104,6 +114,8 @@ async function notifyUserAboutWebinar(userId, {
     type: 'webinar',
     ...(seminarIdStr ? { seminarId: seminarIdStr } : {}),
     ...(resolvedLinkUrl ? { linkUrl: resolvedLinkUrl } : {}),
+    ...(meetingUrlStr ? { meetingUrl: meetingUrlStr } : {}),
+    ...(meetingPasscodeStr ? { meetingPasscode: meetingPasscodeStr } : {}),
   };
 
   if (!userId) {

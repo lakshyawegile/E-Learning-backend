@@ -3,38 +3,31 @@ const { ScheduledWebinarNotification, Seminar } = require('../models');
 const paginate = require('../utils/pagination');
 const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
 
-const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-function normalizeTime(raw) {
-  const t = String(raw || '').trim();
-  const match = t.match(/^(\d{1,2}):(\d{2})$/);
-  if (!match) return null;
-  const hh = Number(match[1]);
-  const mm = Number(match[2]);
-  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return null;
-  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
-}
-
-function normalizeDays(raw) {
-  if (!Array.isArray(raw)) return [];
-  const unique = [
-    ...new Set(
-      raw
-        .map((d) => Number(d))
-        .filter((d) => Number.isInteger(d) && d >= 0 && d <= 6)
-    ),
-  ].sort((a, b) => a - b);
-  return unique;
+// Positive = minutes before the session starts, 0 = at the start,
+// negative = minutes after it began (to catch people who missed the reminder).
+// A rule may carry several, so it can ping before, at, and during one session.
+function normalizeOffsets(raw) {
+  const list = Array.isArray(raw) ? raw : [raw];
+  const cleaned = [];
+  for (const item of list) {
+    if (item === undefined || item === null || item === '') continue;
+    const n = Number(item);
+    if (!Number.isFinite(n) || n < -720 || n > 10080) return null;
+    cleaned.push(Math.round(n));
+  }
+  if (!cleaned.length) return [30];
+  // Earliest first, so the stored order reads the way it fires
+  return [...new Set(cleaned)].sort((a, b) => b - a);
 }
 
 function mapSchedule(doc) {
-  const daysOfWeek = Array.isArray(doc.daysOfWeek) ? doc.daysOfWeek : [];
   return {
     _id: doc._id,
     organizationId: doc.organizationId,
-    daysOfWeek,
-    dayLabels: daysOfWeek.map((d) => DAY_NAMES[d]),
-    time: doc.time,
+    offsets: Array.isArray(doc.offsets) && doc.offsets.length
+      ? doc.offsets
+      : [Number.isFinite(doc.offsetMinutes) ? doc.offsetMinutes : 30],
     timezone: doc.timezone,
     title: doc.title,
     body: doc.body,
@@ -52,39 +45,40 @@ function mapSchedule(doc) {
   };
 }
 
-async function resolveSeminarLink({ seminarId, organizationId, linkUrl }) {
-  let resolvedSeminarId = null;
-  let resolvedLinkUrl = String(linkUrl || '').trim();
-
-  if (seminarId) {
-    if (!Types.ObjectId.isValid(seminarId)) {
-      const err = new Error('Invalid seminarId');
-      err.status = 400;
-      throw err;
-    }
-    const seminar = await Seminar.findOne({ _id: seminarId, organizationId }).lean();
-    if (!seminar) {
-      const err = new Error('Seminar not found');
-      err.status = 404;
-      throw err;
-    }
-    resolvedSeminarId = seminar._id;
-    if (!resolvedLinkUrl && seminar.meetingUrl) {
-      resolvedLinkUrl = seminar.meetingUrl;
-    }
+/**
+ * The linked seminar is the single source of truth: it decides the tap
+ * destination and owns the meeting link/passcode. The tap always resolves to
+ * the in-app deep link so the notification opens the seminar page (which then
+ * offers the join button) — never straight out to Zoom/Meet.
+ */
+async function resolveSeminarLink({ seminarId, organizationId }) {
+  if (!seminarId) {
+    const err = new Error('Select a seminar — it decides where the notification opens');
+    err.status = 400;
+    throw err;
   }
-
-  if (!resolvedLinkUrl && !resolvedSeminarId) {
-    const err = new Error('linkUrl or seminarId is required so the app can open the webinar page');
+  if (!Types.ObjectId.isValid(seminarId)) {
+    const err = new Error('Invalid seminarId');
     err.status = 400;
     throw err;
   }
 
-  return { resolvedSeminarId, resolvedLinkUrl };
+  const seminar = await Seminar.findOne({ _id: seminarId, organizationId }).lean();
+  if (!seminar) {
+    const err = new Error('Seminar not found');
+    err.status = 404;
+    throw err;
+  }
+
+  return {
+    resolvedSeminarId: seminar._id,
+    resolvedLinkUrl: `webinar://${String(seminar._id)}`,
+  };
 }
 
 // POST /api/webinar-schedules
-// Body: { daysOfWeek: [0,2], time: "19:00", title, message, linkUrl?, seminarId?, imageUrl?, isActive? }
+// Body: { title, message, seminarId, offsets?: number[], imageUrl?, isActive? }
+// Days/times are NOT set here — they come from the linked seminar.
 const createWebinarSchedule = async (req, res) => {
   try {
     const organizationId = req.user?.organizationId;
@@ -98,10 +92,8 @@ const createWebinarSchedule = async (req, res) => {
       body,
       message,
       imageUrl,
-      linkUrl,
       seminarId,
-      daysOfWeek,
-      time,
+      offsets,
       timezone,
       isActive,
     } = req.body || {};
@@ -112,33 +104,23 @@ const createWebinarSchedule = async (req, res) => {
       return res.status(400).json({ success: false, message: 'title and body/message are required' });
     }
 
-    const days = normalizeDays(daysOfWeek);
-    if (!days.length) {
+    const parsedOffsets = normalizeOffsets(offsets);
+    if (parsedOffsets === null) {
       return res.status(400).json({
         success: false,
-        message: 'Select at least one day (daysOfWeek: 0=Sun … 6=Sat)',
-      });
-    }
-
-    const normalizedTime = normalizeTime(time);
-    if (!normalizedTime) {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid time is required (HH:mm), e.g. 19:00',
+        message: 'Each send time must be between 12 hours after the start and 7 days before it',
       });
     }
 
     const { resolvedSeminarId, resolvedLinkUrl } = await resolveSeminarLink({
       seminarId,
       organizationId,
-      linkUrl,
     });
 
     const job = await ScheduledWebinarNotification.create({
       organizationId,
       createdBy,
-      daysOfWeek: days,
-      time: normalizedTime,
+      offsets: parsedOffsets,
       timezone: String(timezone || 'Asia/Kolkata').trim() || 'Asia/Kolkata',
       title: notificationTitle,
       body: notificationBody,
@@ -214,10 +196,8 @@ const updateWebinarSchedule = async (req, res) => {
       body,
       message,
       imageUrl,
-      linkUrl,
       seminarId,
-      daysOfWeek,
-      time,
+      offsets,
       timezone,
       isActive,
     } = req.body || {};
@@ -234,27 +214,18 @@ const updateWebinarSchedule = async (req, res) => {
     }
     if (isActive !== undefined) job.isActive = Boolean(isActive);
 
-    if (daysOfWeek !== undefined) {
-      const days = normalizeDays(daysOfWeek);
-      if (!days.length) {
-        return res.status(400).json({ success: false, message: 'Select at least one day' });
+    if (offsets !== undefined) {
+      const parsedOffsets = normalizeOffsets(offsets);
+      if (parsedOffsets === null) {
+        return res.status(400).json({ success: false, message: 'Each send time must be between 12 hours after the start and 7 days before it' });
       }
-      job.daysOfWeek = days;
+      job.offsets = parsedOffsets;
     }
 
-    if (time !== undefined) {
-      const normalizedTime = normalizeTime(time);
-      if (!normalizedTime) {
-        return res.status(400).json({ success: false, message: 'Valid time is required (HH:mm)' });
-      }
-      job.time = normalizedTime;
-    }
-
-    if (linkUrl !== undefined || seminarId !== undefined) {
+    if (seminarId !== undefined) {
       const { resolvedSeminarId, resolvedLinkUrl } = await resolveSeminarLink({
-        seminarId: seminarId === undefined ? job.seminarId : seminarId,
+        seminarId,
         organizationId,
-        linkUrl: linkUrl === undefined ? job.linkUrl : linkUrl,
       });
       job.seminarId = resolvedSeminarId;
       job.linkUrl = resolvedLinkUrl;
@@ -324,7 +295,5 @@ module.exports = {
   listWebinarSchedules,
   updateWebinarSchedule,
   cancelWebinarSchedule,
-  normalizeTime,
-  normalizeDays,
-  DAY_NAMES,
+  normalizeOffsets,
 };

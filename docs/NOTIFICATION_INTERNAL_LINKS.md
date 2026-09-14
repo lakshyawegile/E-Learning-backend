@@ -36,6 +36,33 @@ Example:
 { "title": "New Update", "body": "...", "type": "news", "newsId": "abc123" }
 ```
 
+### Extra fields on `webinar`
+
+A `webinar` notification may also carry the meeting details, so the destination
+page can offer a join button without a second API call. Both are **optional** —
+present only when the admin filled them in, so check before rendering:
+
+| Field | Meaning |
+|---|---|
+| `meetingUrl` | The real Zoom/Meet/Teams join link |
+| `meetingPasscode` | Meeting password, when the link alone isn't enough to get in |
+
+```json
+{
+  "title": "Free Online Webinar at 7 PM",
+  "body": "...",
+  "type": "webinar",
+  "seminarId": "abc123",
+  "meetingUrl": "https://zoom.us/j/1234567890?pwd=...",
+  "meetingPasscode": "483920"
+}
+```
+
+Recommended handling: show the passcode next to the join button (and make it
+copyable). Open `meetingUrl` **externally** — `LaunchMode.externalApplication`,
+not an in-app webview — so the OS hands off to the installed Zoom/Meet app. An
+in-app webview generally cannot join a meeting and strands the user.
+
 ## 4. Types that need nothing else (open a general page)
 
 | `type` | Opens |

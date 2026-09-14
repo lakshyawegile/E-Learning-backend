@@ -1,106 +1,161 @@
 const cron = require('node-cron');
-const { ScheduledWebinarNotification } = require('../models');
+const { ScheduledWebinarNotification, Seminar } = require('../models');
 const { notifyAllUsersAboutWebinar } = require('../services/webinarNotify');
+const { buildNextOccurrenceUTC } = require('../utils/seminarOccurrence');
 
-// Check every minute; fire when IST day + HH:mm match an active recurring rule
+// Check every minute; each rule fires once per seminar session, at its offset.
 const CRON_SCHEDULE = process.env.WEBINAR_NOTIFY_CRON_SCHEDULE || '* * * * *';
 const CRON_TZ = process.env.WEBINAR_NOTIFY_CRON_TZ || 'Asia/Kolkata';
+
+const IST_TZ = 'Asia/Kolkata';
+const formatTimeIST = (d) =>
+  new Intl.DateTimeFormat('en-IN', { timeZone: IST_TZ, hour: 'numeric', minute: '2-digit', hour12: true }).format(d);
+const formatDayNameIST = (d) =>
+  new Intl.DateTimeFormat('en-IN', { timeZone: IST_TZ, weekday: 'long' }).format(d);
+const formatDateIST = (d) =>
+  new Intl.DateTimeFormat('en-IN', { timeZone: IST_TZ, day: '2-digit', month: 'long' }).format(d);
 
 let running = false;
 let scheduledJob = null;
 
 /**
- * Current calendar parts in Asia/Kolkata.
- * dayOfWeek: 0=Sun … 6=Sat, time: "HH:mm", dateKey: "YYYY-MM-DD"
+ * Lets the admin write copy once and have it read correctly for every session:
+ * "Join us {day} at {time}" -> "Join us Sunday at 8:00 pm".
  */
-function getTimezoneParts(date = new Date(), timeZone = 'Asia/Kolkata') {
-  const dtf = new Intl.DateTimeFormat('en-US', {
-    timeZone,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-    weekday: 'short',
-  });
-
-  const parts = {};
-  for (const p of dtf.formatToParts(date)) {
-    if (p.type !== 'literal') parts[p.type] = p.value;
+function relativeWhen(offsetMinutes) {
+  if (!Number.isFinite(offsetMinutes) || offsetMinutes <= 0) return 'now';
+  if (offsetMinutes < 60) return `in ${offsetMinutes} minutes`;
+  if (offsetMinutes < 1440) {
+    const h = Math.round(offsetMinutes / 60);
+    return `in ${h} hour${h === 1 ? '' : 's'}`;
   }
+  const d = Math.round(offsetMinutes / 1440);
+  return `in ${d} day${d === 1 ? '' : 's'}`;
+}
 
-  const weekdayMap = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
-  let hour = parts.hour || '00';
-  if (hour === '24') hour = '00';
-
-  return {
-    dayOfWeek: weekdayMap[parts.weekday],
-    time: `${String(hour).padStart(2, '0')}:${parts.minute}`,
-    dateKey: `${parts.year}-${parts.month}-${parts.day}`,
-  };
+function applyPlaceholders(text, { startUTC, seminarTitle, offsetMinutes }) {
+  return String(text || '')
+    .replace(/\{when\}/gi, relativeWhen(offsetMinutes))
+    .replace(/\{time\}/gi, formatTimeIST(startUTC))
+    .replace(/\{day\}/gi, formatDayNameIST(startUTC))
+    .replace(/\{date\}/gi, formatDateIST(startUTC))
+    .replace(/\{title\}/gi, seminarTitle || '');
 }
 
 async function processDueWebinarNotifications() {
-  const { dayOfWeek, time, dateKey } = getTimezoneParts(new Date(), CRON_TZ);
-  if (dayOfWeek === undefined || !time) return { processed: 0, skipped: 'BAD_CLOCK' };
+  const now = new Date();
 
-  const due = await ScheduledWebinarNotification.find({
+  const rules = await ScheduledWebinarNotification.find({
     isActive: true,
-    time,
-    daysOfWeek: dayOfWeek,
-    lastSentOccurrenceKey: { $ne: dateKey },
-  }).limit(50);
+    seminarId: { $ne: null },
+  }).limit(100);
 
-  if (!due.length) return { processed: 0, dayOfWeek, time, dateKey };
+  if (!rules.length) return { processed: 0 };
 
   let processed = 0;
-  for (const job of due) {
-    // Claim this occurrence so parallel workers don't double-send
-    const claimed = await ScheduledWebinarNotification.findOneAndUpdate(
-      {
-        _id: job._id,
-        isActive: true,
-        lastSentOccurrenceKey: { $ne: dateKey },
-      },
-      {
-        $set: {
-          lastSentOccurrenceKey: dateKey,
-          lastSentAt: new Date(),
-          lastErrorMessage: '',
-        },
-      },
-      { new: true }
-    );
-    if (!claimed) continue;
 
-    try {
-      const result = await notifyAllUsersAboutWebinar({
-        title: claimed.title,
-        body: claimed.body,
-        imageUrl: claimed.imageUrl,
-        linkUrl: claimed.linkUrl,
-        seminarId: claimed.seminarId,
-      });
+  for (const rule of rules) {
+    // The seminar owns the schedule — no seminar (or a deactivated one) means
+    // there is nothing to remind anyone about.
+    const seminar = await Seminar.findOne({ _id: rule.seminarId, isActive: true }).lean();
+    if (!seminar) continue;
 
-      claimed.lastSentCount = result.sentCount || 0;
-      claimed.lastErrorMessage = '';
-      await claimed.save();
-      processed += 1;
+    const occ = buildNextOccurrenceUTC({ now, schedule: seminar.schedule });
+    if (!occ) continue;
 
-      console.log(
-        `[webinarNotifyCron] Recurring send ${claimed._id} (${dateKey} ${time}) → ${claimed.lastSentCount} user(s)`
+    const minutesUntilStart = (occ.startUTC.getTime() - now.getTime()) / 60000;
+    const occurrenceKey = occ.startUTC.toISOString();
+
+    // A rule may fire several times per session. Fall back to the old single
+    // field for rules saved before multiple offsets existed.
+    const offsets = Array.isArray(rule.offsets) && rule.offsets.length
+      ? rule.offsets
+      : [Number.isFinite(rule.offsetMinutes) ? rule.offsetMinutes : 30];
+
+    // New session — forget which offsets went out for the previous one.
+    if (rule.lastSentOccurrenceKey !== occurrenceKey) {
+      await ScheduledWebinarNotification.updateOne(
+        { _id: rule._id, lastSentOccurrenceKey: { $ne: occurrenceKey } },
+        { $set: { lastSentOccurrenceKey: occurrenceKey, sentOffsets: [] } }
       );
-    } catch (err) {
-      console.error(`[webinarNotifyCron] Failed ${claimed._id}:`, err.message || err);
-      // Allow retry later same day by clearing claim key on failure
-      claimed.lastSentOccurrenceKey = '';
-      claimed.lastErrorMessage = String(err.message || err).slice(0, 500);
-      await claimed.save();
+      rule.sentOffsets = [];
+    }
+
+    // Never send for a session that has already finished — this is what stops an
+    // "after start" reminder going out once everyone has gone home.
+    if (now > occ.endUTC) continue;
+
+    for (const rawOffset of offsets) {
+      const offsetMinutes = Number(rawOffset);
+      if (!Number.isFinite(offsetMinutes)) continue;
+
+      // Positive offset = send before the start, negative = after it has begun.
+      // minutesUntilStart goes negative once a session is under way, so the same
+      // comparison covers both directions.
+      if (minutesUntilStart > offsetMinutes) continue;
+
+      // Claim this one offset for this one session; whoever wins the update sends.
+      const claimed = await ScheduledWebinarNotification.findOneAndUpdate(
+        {
+          _id: rule._id,
+          isActive: true,
+          lastSentOccurrenceKey: occurrenceKey,
+          sentOffsets: { $ne: offsetMinutes },
+        },
+        {
+          $addToSet: { sentOffsets: offsetMinutes },
+          $set: { lastSentAt: new Date(), lastErrorMessage: '' },
+        },
+        { new: true }
+      );
+      if (!claimed) continue;
+
+      try {
+        const context = {
+          startUTC: occ.startUTC,
+          seminarTitle: seminar.title,
+          offsetMinutes,
+        };
+
+        const result = await notifyAllUsersAboutWebinar({
+          title: applyPlaceholders(claimed.title, context),
+          body: applyPlaceholders(claimed.body, context),
+          imageUrl: claimed.imageUrl,
+          linkUrl: claimed.linkUrl,
+          seminarId: claimed.seminarId,
+          // Read fresh from the seminar so editing it updates every alert at once
+          meetingUrl: seminar.meetingUrl || '',
+          meetingPasscode: seminar.meetingPasscode || '',
+        });
+
+        claimed.lastSentCount = result.sentCount || 0;
+        await claimed.save();
+        processed += 1;
+
+        const when =
+          offsetMinutes > 0 ? `${offsetMinutes}m before`
+            : offsetMinutes === 0 ? 'at start'
+              : `${-offsetMinutes}m after start`;
+        console.log(
+          `[webinarNotifyCron] Sent ${claimed._id} for session ${occurrenceKey} ` +
+          `(${when}) → ${claimed.lastSentCount} user(s)`
+        );
+      } catch (err) {
+        console.error(`[webinarNotifyCron] Failed ${rule._id} @${offsetMinutes}:`, err.message || err);
+        // Release just this offset so the next tick retries it, while any other
+        // offsets already sent for this session stay sent.
+        await ScheduledWebinarNotification.updateOne(
+          { _id: rule._id },
+          {
+            $pull: { sentOffsets: offsetMinutes },
+            $set: { lastErrorMessage: String(err.message || err).slice(0, 500) },
+          }
+        );
+      }
     }
   }
 
-  return { processed, dayOfWeek, time, dateKey };
+  return { processed };
 }
 
 function startWebinarNotifyCron() {
@@ -133,12 +188,13 @@ function startWebinarNotifyCron() {
     { timezone: CRON_TZ }
   );
 
-  console.log(`[webinarNotifyCron] Recurring weekly checker "${CRON_SCHEDULE}" (${CRON_TZ})`);
+  console.log(`[webinarNotifyCron] Seminar reminder checker "${CRON_SCHEDULE}" (${CRON_TZ})`);
   return scheduledJob;
 }
 
 module.exports = {
   startWebinarNotifyCron,
   processDueWebinarNotifications,
-  getTimezoneParts,
+  applyPlaceholders,
+  relativeWhen,
 };

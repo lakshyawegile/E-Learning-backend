@@ -1,5 +1,6 @@
 const { Seminar, SeminarRegistration, User, SeminarHomeConfig } = require('../models');
 const paginate = require('../utils/pagination');
+const { buildNextOccurrenceUTC } = require('../utils/seminarOccurrence');
 
 const normalizeDays = (days) => {
   if (!Array.isArray(days)) return [];
@@ -24,41 +25,124 @@ const getISTDayOfWeek = (date) => {
   return ist.getUTCDay(); // 0=Sun ... 6=Sat in IST context
 };
 
-const buildNextOccurrenceUTC = ({ now, daysOfWeek, timeHHmm, durationMinutes = 60 }) => {
-  const [hh, mm] = String(timeHHmm || '19:00').split(':').map((x) => Number(x));
-  const hour = Number.isFinite(hh) ? hh : 19;
-  const minute = Number.isFinite(mm) ? mm : 0;
+// How long before the start the app should switch to "starting soon".
+const STARTING_SOON_MINUTES = 30;
 
-  // "now" in IST components using fixed offset
-  const istNow = new Date(now.getTime() + 330 * 60 * 1000);
-  const baseY = istNow.getUTCFullYear();
-  const baseM = istNow.getUTCMonth();
-  const baseD = istNow.getUTCDate();
+const isSameISTDay = (a, b) => {
+  const istA = new Date(a.getTime() + 330 * 60 * 1000);
+  const istB = new Date(b.getTime() + 330 * 60 * 1000);
+  return (
+    istA.getUTCFullYear() === istB.getUTCFullYear() &&
+    istA.getUTCMonth() === istB.getUTCMonth() &&
+    istA.getUTCDate() === istB.getUTCDate()
+  );
+};
 
-  const todayDowIST = istNow.getUTCDay();
-  const timeNowMinutes = istNow.getUTCHours() * 60 + istNow.getUTCMinutes();
-  const targetMinutes = hour * 60 + minute;
+/**
+ * Resolves the home-screen webinar banner. The server picks the state AND the
+ * copy so the app can render it as-is — no date maths or branching client-side.
+ */
+const buildWebinarBanner = ({ now, best, whatsapp_message }) => {
+  const { startUTC, endUTC, seminar } = best;
+  const is_live = now >= startUTC && now <= endUTC;
+  const is_today = isSameISTDay(startUTC, now);
+  const startsInMinutes = Math.round((startUTC.getTime() - now.getTime()) / 60000);
+  const timeLabel = formatTimeIST(startUTC);
 
-  const candidateOffsets = [];
-  const days = Array.isArray(daysOfWeek) ? daysOfWeek : [];
+  let status = 'upcoming';
+  let headline = `Next seminar on ${formatDayIST(startUTC)} ${formatMonthNameIST(startUTC)}, ${timeLabel}`;
+  let ctaLabel = 'View details';
 
-  for (const dow of days) {
-    if (!Number.isFinite(dow) || dow < 0 || dow > 6) continue;
-    let diff = (dow - todayDowIST + 7) % 7;
-    if (diff === 0 && targetMinutes <= timeNowMinutes) diff = 7; // today already passed -> next week
-    candidateOffsets.push(diff);
+  if (is_live) {
+    status = 'live';
+    headline = 'Seminar is live now';
+    ctaLabel = 'Tap to join';
+  } else if (startsInMinutes > 0 && startsInMinutes <= STARTING_SOON_MINUTES) {
+    status = 'starting_soon';
+    headline = `Seminar starts in ${startsInMinutes} min`;
+    ctaLabel = 'Tap to join';
+  } else if (is_today) {
+    status = 'today';
+    headline = `Seminar is today at ${timeLabel}`;
+    ctaLabel = 'View details';
   }
 
-  if (!candidateOffsets.length) return null;
-  const minDiff = Math.min(...candidateOffsets);
+  return {
+    status,
+    headline,
+    ctaLabel,
+    is_live,
+    is_today,
+    starts_in_minutes: startsInMinutes,
+    startsAt: startUTC.toISOString(),
+    endsAt: endUTC.toISOString(),
+    // Unchanged from before — the existing home screen still reads these
+    day: formatDayIST(startUTC),
+    month: formatMonthNameIST(startUTC),
+    time: timeLabel,
+    whatsapp_message,
+    seminarId: String(seminar._id),
+    title: seminar.title || '',
+    meetingUrl: seminar.meetingUrl || '',
+    meetingPasscode: seminar.meetingPasscode || '',
+  };
+};
 
-  // Build IST datetime as UTC fields (because we shifted to IST context via offset)
-  const istTarget = new Date(Date.UTC(baseY, baseM, baseD + minDiff, hour, minute, 0, 0));
-  // Convert back to UTC by subtracting IST offset
-  const startUTC = new Date(istTarget.getTime() - 330 * 60 * 1000);
-  const endUTC = new Date(startUTC.getTime() + (Number(durationMinutes) || 60) * 60 * 1000);
+const normalizeTimeHHmm = (raw, fallback = '19:00') => {
+  const match = String(raw || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return fallback;
+  const hh = Number(match[1]);
+  const mm = Number(match[2]);
+  if (hh < 0 || hh > 23 || mm < 0 || mm > 59) return fallback;
+  return `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+};
 
-  return { startUTC, endUTC };
+/**
+ * Builds the stored schedule from an incoming payload. Accepts either the new
+ * per-day `slots` or the legacy daysOfWeek + single time, and always writes
+ * BOTH — slots as the source of truth, daysOfWeek/time as a mirror so anything
+ * still reading the old fields keeps working.
+ */
+const normalizeSchedulePayload = (schedule) => {
+  const sch = schedule && typeof schedule === 'object' ? schedule : {};
+  const defaultDuration = Number(sch.durationMinutes) || 60;
+
+  let slots = [];
+  if (Array.isArray(sch.slots) && sch.slots.length) {
+    slots = sch.slots
+      .map((s) => {
+        const dayOfWeek = Number(s?.dayOfWeek);
+        if (!Number.isInteger(dayOfWeek) || dayOfWeek < 0 || dayOfWeek > 6) return null;
+        return {
+          dayOfWeek,
+          time: normalizeTimeHHmm(s?.time),
+          durationMinutes: Number(s?.durationMinutes) || defaultDuration,
+        };
+      })
+      .filter(Boolean);
+  } else {
+    // Legacy input — one time for every selected day
+    const time = normalizeTimeHHmm(sch.time);
+    slots = normalizeDays(sch.daysOfWeek).map((dayOfWeek) => ({
+      dayOfWeek,
+      time,
+      durationMinutes: defaultDuration,
+    }));
+  }
+
+  slots.sort((a, b) => a.dayOfWeek - b.dayOfWeek || a.time.localeCompare(b.time));
+
+  return {
+    type: 'weekly',
+    slots,
+    // Mirror of the above, for readers still on the old shape
+    daysOfWeek: [...new Set(slots.map((s) => s.dayOfWeek))],
+    time: slots.length ? slots[0].time : normalizeTimeHHmm(sch.time),
+    durationMinutes: slots.length ? slots[0].durationMinutes : defaultDuration,
+    timezone: String(sch.timezone || 'Asia/Kolkata').trim() || 'Asia/Kolkata',
+    startDate: sch.startDate ? new Date(sch.startDate) : null,
+    endDate: sch.endDate ? new Date(sch.endDate) : null,
+  };
 };
 
 // ADMIN: POST /api/seminars
@@ -68,7 +152,8 @@ const createSeminar = async (req, res) => {
     const createdBy = req.user?.userId || null;
     if (!organizationId) return res.status(400).json({ message: 'User organization not found' });
 
-    const { title, description, bannerImageUrl, meetingUrl, schedule, isActive } = req.body || {};
+    const { title, description, bannerImageUrl, meetingUrl, meetingPasscode, schedule, isActive } =
+      req.body || {};
 
     const doc = await Seminar.create({
       organizationId,
@@ -76,17 +161,8 @@ const createSeminar = async (req, res) => {
       description: description !== undefined ? String(description).trim() : '',
       bannerImageUrl: bannerImageUrl !== undefined ? String(bannerImageUrl).trim() : '',
       meetingUrl: meetingUrl !== undefined ? String(meetingUrl).trim() : '',
-      schedule: schedule
-        ? {
-            type: 'weekly',
-            daysOfWeek: normalizeDays(schedule.daysOfWeek),
-            time: schedule.time !== undefined ? String(schedule.time).trim() : '19:00',
-            timezone: schedule.timezone !== undefined ? String(schedule.timezone).trim() : 'Asia/Kolkata',
-            durationMinutes: schedule.durationMinutes !== undefined ? Number(schedule.durationMinutes) || 60 : 60,
-            startDate: schedule.startDate ? new Date(schedule.startDate) : null,
-            endDate: schedule.endDate ? new Date(schedule.endDate) : null,
-          }
-        : undefined,
+      meetingPasscode: meetingPasscode !== undefined ? String(meetingPasscode).trim() : '',
+      schedule: schedule ? normalizeSchedulePayload(schedule) : undefined,
       isActive: isActive !== undefined ? Boolean(isActive) : true,
       createdBy,
     });
@@ -116,12 +192,7 @@ const getSeminarHome = async (req, res) => {
     for (const s of seminars) {
       const sch = s.schedule || {};
       if (sch.type !== 'weekly') continue;
-      const occ = buildNextOccurrenceUTC({
-        now,
-        daysOfWeek: sch.daysOfWeek,
-        timeHHmm: sch.time,
-        durationMinutes: sch.durationMinutes,
-      });
+      const occ = buildNextOccurrenceUTC({ now, schedule: sch });
       if (!occ) continue;
 
       // Optional schedule window constraints
@@ -133,20 +204,16 @@ const getSeminarHome = async (req, res) => {
       }
     }
 
-    const is_live = best ? now >= best.startUTC && now <= best.endUTC : false;
     const webinar = best
-      ? {
-          is_live,
-          day: formatDayIST(best.startUTC),
-          month: formatMonthNameIST(best.startUTC),
-          time: formatTimeIST(best.startUTC),
-          whatsapp_message,
-          seminarId: String(best.seminar._id),
-          title: best.seminar.title || '',
-          meetingUrl: best.seminar.meetingUrl || '',
-        }
+      ? buildWebinarBanner({ now, best, whatsapp_message })
       : {
+          status: 'none',
+          headline: '',
+          ctaLabel: '',
           is_live: false,
+          is_today: false,
+          starts_in_minutes: null,
+          startsAt: null,
           day: '',
           month: '',
           time: '',
@@ -243,26 +310,18 @@ const updateSeminar = async (req, res) => {
     if (!organizationId) return res.status(400).json({ message: 'User organization not found' });
 
     const { seminarId } = req.params;
-    const { title, description, bannerImageUrl, meetingUrl, schedule, isActive } = req.body || {};
+    const { title, description, bannerImageUrl, meetingUrl, meetingPasscode, schedule, isActive } =
+      req.body || {};
 
     const updates = {};
     if (title !== undefined) updates.title = String(title).trim();
     if (description !== undefined) updates.description = String(description).trim();
     if (bannerImageUrl !== undefined) updates.bannerImageUrl = String(bannerImageUrl).trim();
     if (meetingUrl !== undefined) updates.meetingUrl = String(meetingUrl).trim();
+    if (meetingPasscode !== undefined) updates.meetingPasscode = String(meetingPasscode).trim();
     if (isActive !== undefined) updates.isActive = Boolean(isActive);
     if (schedule !== undefined && schedule && typeof schedule === 'object') {
-      updates.schedule = {
-        type: 'weekly',
-        daysOfWeek: schedule.daysOfWeek !== undefined ? normalizeDays(schedule.daysOfWeek) : undefined,
-        time: schedule.time !== undefined ? String(schedule.time).trim() : undefined,
-        timezone: schedule.timezone !== undefined ? String(schedule.timezone).trim() : undefined,
-        durationMinutes: schedule.durationMinutes !== undefined ? Number(schedule.durationMinutes) || 60 : undefined,
-        startDate: schedule.startDate !== undefined ? (schedule.startDate ? new Date(schedule.startDate) : null) : undefined,
-        endDate: schedule.endDate !== undefined ? (schedule.endDate ? new Date(schedule.endDate) : null) : undefined,
-      };
-      // Remove undefined keys so we don't overwrite unintentionally
-      Object.keys(updates.schedule).forEach((k) => updates.schedule[k] === undefined && delete updates.schedule[k]);
+      updates.schedule = normalizeSchedulePayload(schedule);
     }
 
     const doc = await Seminar.findOneAndUpdate(
