@@ -43,6 +43,7 @@ const PremiumFeaturesConfig = require('./PremiumFeaturesConfig');
 const OneOnOneConfig = require('./OneOnOneConfig');
 const ProfileQuestionConfig = require('./ProfileQuestionConfig');
 const UserProfileAnswers = require('./UserProfileAnswers');
+const CrmLeadSync = require('./CrmLeadSync');
 
 module.exports = {
   Organization,
@@ -66,6 +67,7 @@ module.exports = {
   Notification,
   AppModuleConfig,
   ShortVideo,
+  CrmLeadSync,
   AnalyticsLogEvent,
   DailyAnalytics,
   AnalyticsMeta,

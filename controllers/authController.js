@@ -2,6 +2,7 @@ const { User } = require('../models');
 const jwt = require('jsonwebtoken');
 const AppOtp = require('../models/AppOtp');
 const logger = require('../utils/logger');
+const { queueLead } = require('../services/crmLeadSync');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '30d';
@@ -116,6 +117,11 @@ const verifyOtp = async (req, res) => {
         payload.device_id = device_id.trim();
       }
       user = await User.create(payload);
+
+      // New signup -> push the lead to the CRM. Deliberately not awaited: a CRM
+      // outage must never slow down or fail the signup itself. Failures land in
+      // the CrmLeadSync outbox and are retried by crmLeadRetryCron.
+      queueLead(user, 'signup');
     } else {
       let shouldSave = false;
 
