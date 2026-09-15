@@ -1,6 +1,7 @@
 const { CtoBanner } = require('../models');
 const paginate = require('../utils/pagination');
 const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
+const logger = require('../utils/logger');
 
 // POST /api/cto-banners
 const createCtoBanner = async (req, res) => {
@@ -24,7 +25,7 @@ const createCtoBanner = async (req, res) => {
 
     return res.status(201).json(banner);
   } catch (err) {
-    console.error('createCtoBanner error:', err);
+    logger.error('createCtoBanner error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -46,7 +47,7 @@ const listCtoBanners = async (req, res) => {
     });
     return res.json(result);
   } catch (err) {
-    console.error('listCtoBanners error:', err);
+    logger.error('listCtoBanners error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -85,7 +86,7 @@ const updateCtoBanner = async (req, res) => {
 
     return res.json(banner);
   } catch (err) {
-    console.error('updateCtoBanner error:', err);
+    logger.error('updateCtoBanner error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -105,7 +106,7 @@ const deleteCtoBanner = async (req, res) => {
 
     return res.json({ message: 'Banner deleted' });
   } catch (err) {
-    console.error('deleteCtoBanner error:', err);
+    logger.error('deleteCtoBanner error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

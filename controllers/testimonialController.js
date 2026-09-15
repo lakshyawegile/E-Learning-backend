@@ -1,6 +1,7 @@
 const { Testimonial } = require('../models');
 const paginate = require('../utils/pagination');
 const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
+const logger = require('../utils/logger');
 
 const hasAnyContent = ({ imageUrl, videoUrl, title, description }) =>
   Boolean(
@@ -34,7 +35,7 @@ const createTestimonial = async (req, res) => {
 
     return res.status(201).json(doc);
   } catch (err) {
-    console.error('createTestimonial error:', err);
+    logger.error('createTestimonial error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -59,7 +60,7 @@ const listTestimonials = async (req, res) => {
     });
     return res.json(result);
   } catch (err) {
-    console.error('listTestimonials error:', err);
+    logger.error('listTestimonials error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -78,7 +79,7 @@ const getTestimonialById = async (req, res) => {
     }
     return res.json(doc);
   } catch (err) {
-    console.error('getTestimonialById error:', err);
+    logger.error('getTestimonialById error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -123,7 +124,7 @@ const updateTestimonial = async (req, res) => {
 
     return res.json(doc);
   } catch (err) {
-    console.error('updateTestimonial error:', err);
+    logger.error('updateTestimonial error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -144,7 +145,7 @@ const deleteTestimonial = async (req, res) => {
 
     return res.json({ message: 'Testimonial deleted' });
   } catch (err) {
-    console.error('deleteTestimonial error:', err);
+    logger.error('deleteTestimonial error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

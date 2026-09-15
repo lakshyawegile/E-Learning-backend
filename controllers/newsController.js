@@ -1,6 +1,7 @@
 const { News } = require('../models');
 const paginate = require('../utils/pagination');
 const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
+const logger = require('../utils/logger');
 
 // POST /api/news
 const createNews = async (req, res) => {
@@ -25,7 +26,7 @@ const createNews = async (req, res) => {
 
     return res.status(201).json(news);
   } catch (err) {
-    console.error('createNews error:', err);
+    logger.error('createNews error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -47,7 +48,7 @@ const listNews = async (req, res) => {
     });
     return res.json(result);
   } catch (err) {
-    console.error('listNews error:', err);
+    logger.error('listNews error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -77,7 +78,7 @@ const getNewsById = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getNewsById error:', err);
+    logger.error('getNewsById error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -112,7 +113,7 @@ const updateNews = async (req, res) => {
 
     return res.json(news);
   } catch (err) {
-    console.error('updateNews error:', err);
+    logger.error('updateNews error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -132,7 +133,7 @@ const deleteNews = async (req, res) => {
 
     return res.json({ message: 'News deleted' });
   } catch (err) {
-    console.error('deleteNews error:', err);
+    logger.error('deleteNews error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

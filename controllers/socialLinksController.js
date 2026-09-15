@@ -1,4 +1,5 @@
 const { SocialLinksConfig, Organization } = require('../models');
+const logger = require('../utils/logger');
 
 const emptyResponse = () => ({
   whatsapp_number: '',
@@ -45,7 +46,7 @@ const getSocialLinks = async (req, res) => {
         : emptyResponse(),
     });
   } catch (err) {
-    console.error('getSocialLinks error:', err);
+    logger.error('getSocialLinks error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -107,7 +108,7 @@ const updateSocialLinks = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('updateSocialLinks error:', err);
+    logger.error('updateSocialLinks error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

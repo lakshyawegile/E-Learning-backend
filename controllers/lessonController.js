@@ -1,5 +1,6 @@
 const { Lesson, Course, Chapter } = require('../models');
 const paginate = require('../utils/pagination');
+const logger = require('../utils/logger');
 
 // When adding a lesson without chapterId, create a new default chapter for the course
 const createDefaultChapter = async (courseId) => {
@@ -52,7 +53,7 @@ const createLesson = async (req, res) => {
     const populated = await Lesson.findById(lesson._id).populate('chapterId', 'title order').lean();
     return res.status(201).json(populated);
   } catch (err) {
-    console.error('createLesson error:', err);
+    logger.error('createLesson error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -93,7 +94,7 @@ const listLessonsByCourse = async (req, res) => {
       meta: { page: pageNum, limit: limitNum, total, totalPages },
     });
   } catch (err) {
-    console.error('listLessonsByCourse error:', err);
+    logger.error('listLessonsByCourse error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -108,7 +109,7 @@ const getLessonById = async (req, res) => {
     }
     return res.json(lesson);
   } catch (err) {
-    console.error('getLessonById error:', err);
+    logger.error('getLessonById error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -143,7 +144,7 @@ const updateLesson = async (req, res) => {
     }
     return res.json(lesson);
   } catch (err) {
-    console.error('updateLesson error:', err);
+    logger.error('updateLesson error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -158,7 +159,7 @@ const deleteLesson = async (req, res) => {
     }
     return res.json({ message: 'Lesson deleted' });
   } catch (err) {
-    console.error('deleteLesson error:', err);
+    logger.error('deleteLesson error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

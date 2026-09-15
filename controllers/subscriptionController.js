@@ -1,5 +1,6 @@
 const { CourseSubscription, User, Course, PlatformPremiumAccess } = require('../models');
 const paginate = require('../utils/pagination');
+const logger = require('../utils/logger');
 
 // POST /api/subscriptions
 const createSubscription = async (req, res) => {
@@ -39,7 +40,7 @@ const createSubscription = async (req, res) => {
 
     return res.status(201).json(populatedSubscription);
   } catch (err) {
-    console.error('createSubscription error:', err);
+    logger.error('createSubscription error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -69,7 +70,7 @@ const listSubscriptions = async (req, res) => {
 
     return res.json(result);
   } catch (err) {
-    console.error('listSubscriptions error:', err);
+    logger.error('listSubscriptions error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -91,7 +92,7 @@ const getSubscription = async (req, res) => {
 
     return res.json(subscription);
   } catch (err) {
-    console.error('getSubscription error:', err);
+    logger.error('getSubscription error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -122,7 +123,7 @@ const updateSubscription = async (req, res) => {
 
     return res.json(updatedSubscription);
   } catch (err) {
-    console.error('updateSubscription error:', err);
+    logger.error('updateSubscription error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -144,7 +145,7 @@ const cancelSubscription = async (req, res) => {
 
     return res.json({ message: 'Subscription cancelled', subscription });
   } catch (err) {
-    console.error('cancelSubscription error:', err);
+    logger.error('cancelSubscription error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -188,7 +189,7 @@ const checkMySubscriptionStatus = async (req, res) => {
         : null,
     });
   } catch (err) {
-    console.error('checkMySubscriptionStatus error:', err);
+    logger.error('checkMySubscriptionStatus error:', err);
     return res.status(500).json({ message: 'Internal server error', active: false });
   }
 };
@@ -215,7 +216,7 @@ const getUserSubscriptions = async (req, res) => {
 
     return res.json(result);
   } catch (err) {
-    console.error('getUserSubscriptions error:', err);
+    logger.error('getUserSubscriptions error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

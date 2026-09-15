@@ -1,4 +1,5 @@
 const { User } = require('../models');
+const logger = require('../utils/logger');
 
 // POST /api/sales
 const createSalesUser = async (req, res) => {
@@ -24,7 +25,7 @@ const createSalesUser = async (req, res) => {
     const user = await User.create({ organizationId, name, email, mobile, role });
     return res.status(201).json(user);
   } catch (err) {
-    console.error('createSalesUser error:', err);
+    logger.error('createSalesUser error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -39,7 +40,7 @@ const listSalesUsers = async (req, res) => {
     const sales = await User.find(filter).sort({ createdAt: -1 });
     return res.json(sales);
   } catch (err) {
-    console.error('listSalesUsers error:', err);
+    logger.error('listSalesUsers error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -70,7 +71,7 @@ const updateSalesUser = async (req, res) => {
     await user.save();
     return res.json(user);
   } catch (err) {
-    console.error('updateSalesUser error:', err);
+    logger.error('updateSalesUser error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

@@ -1,4 +1,5 @@
 const { JourneyConfig, UserJourneyProgress } = require('../models');
+const logger = require('../utils/logger');
 
 const normalizeJourneyType = (v) => String(v || '').trim().toLowerCase();
 
@@ -41,7 +42,7 @@ const getJourneyProgress = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getJourneyProgress error:', err);
+    logger.error('getJourneyProgress error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -112,7 +113,7 @@ const upsertJourneyProgress = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('upsertJourneyProgress error:', err);
+    logger.error('upsertJourneyProgress error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

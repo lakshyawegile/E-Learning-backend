@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const mongoose = require('mongoose');
 
 const { AnalyticsLogEvent, DailyAnalytics, AnalyticsMeta } = require('../models');
+const logger = require('../utils/logger');
 
 const META_KEY = process.env.ANALYTICS_LAST_PROCESSED_KEY || 'lastProcessedAt';
 const CRON_SCHEDULE = process.env.ANALYTICS_CRON_SCHEDULE || '*/10 * * * *'; // every 10 minutes
@@ -318,7 +319,7 @@ function startAnalyticsCron() {
     try {
       await runOnce();
     } catch (err) {
-      console.error('analyticsCron error:', err);
+      logger.error('analyticsCron error:', err);
     } finally {
       running = false;
     }

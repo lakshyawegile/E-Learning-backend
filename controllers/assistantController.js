@@ -5,6 +5,7 @@ const {
 } = require('../models');
 const { getAssistantReply } = require('../services/openaiAssistant');
 const paginate = require('../utils/pagination');
+const logger = require('../utils/logger');
 
 const DEFAULT_STARTERS = [
   { text: 'What is IEC code and how do I apply for it?', order: 1 },
@@ -65,7 +66,7 @@ const getStarters = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getStarters error:', err);
+    logger.error('getStarters error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -119,7 +120,7 @@ const upsertStarters = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('upsertStarters error:', err);
+    logger.error('upsertStarters error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -157,7 +158,7 @@ const listConversations = async (req, res) => {
       meta: result.meta,
     });
   } catch (err) {
-    console.error('listConversations error:', err);
+    logger.error('listConversations error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -213,7 +214,7 @@ const getConversation = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getConversation error:', err);
+    logger.error('getConversation error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -281,7 +282,7 @@ const sendMessage = async (req, res) => {
     try {
       assistantContent = await getAssistantReply(historyForOpenAI, message);
     } catch (aiErr) {
-      console.error('OpenAI assistant error:', aiErr);
+      logger.error('OpenAI assistant error:', aiErr);
       // New chat with no messages yet — remove empty shell conversation
       if (!conversationId && conversation?._id) {
         await AssistantConversation.deleteOne({ _id: conversation._id }).catch(() => {});
@@ -346,7 +347,7 @@ const sendMessage = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('sendMessage error:', err);
+    logger.error('sendMessage error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

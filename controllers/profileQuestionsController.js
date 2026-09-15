@@ -1,6 +1,7 @@
 const { ProfileQuestionConfig, UserProfileAnswers, SocialLinksConfig, User } = require('../models');
 const { PROFILE_QUESTION_SCREENS, SCREEN_KEYS } = require('../constants/profileQuestionScreens');
 const { flattenProfileAnswer } = require('../utils/profileAnswerFormat');
+const logger = require('../utils/logger');
 
 const INPUT_TYPES = ['text', 'dropdown', 'both'];
 const BANNER_ACTIONS = ['open_questionnaire', 'whatsapp', 'call', 'internal', 'external_url', 'none'];
@@ -154,7 +155,7 @@ const getProfileQuestions = async (req, res) => {
 
     return res.json({ success: true, data });
   } catch (err) {
-    console.error('getProfileQuestions error:', err);
+    logger.error('getProfileQuestions error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -283,7 +284,7 @@ const submitAnswers = async (req, res) => {
     const data = await buildAppResponse(config, saved, organizationId);
     return res.json({ success: true, data });
   } catch (err) {
-    console.error('submitAnswers error:', err);
+    logger.error('submitAnswers error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

@@ -1,6 +1,7 @@
 const { User, Enrollment, Progress, QuizAttempt, Course, UserProfileAnswers } = require('../models');
 const { distinctUserIdsWithActivePremium } = require('../utils/distinctUserIdsWithActivePremium');
 const { buildProfileAnswersMap } = require('../utils/profileAnswerFormat');
+const logger = require('../utils/logger');
 
 // GET /api/user/profile
 const getProfile = async (req, res) => {
@@ -38,7 +39,7 @@ const getProfile = async (req, res) => {
 
     return res.json(profile);
   } catch (err) {
-    console.error('getProfile error:', err);
+    logger.error('getProfile error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -82,7 +83,7 @@ const updateProfile = async (req, res) => {
 
     return res.json(profile);
   } catch (err) {
-    console.error('updateProfile error:', err);
+    logger.error('updateProfile error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -191,7 +192,7 @@ const listUsersAdmin = async (req, res) => {
       meta: { page: pageNum, limit: limitNum, total, totalPages },
     });
   } catch (err) {
-    console.error('listUsersAdmin error:', err);
+    logger.error('listUsersAdmin error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -281,7 +282,7 @@ const exportUsersAdmin = async (req, res) => {
 
     return res.json({ data, total: data.length });
   } catch (err) {
-    console.error('exportUsersAdmin error:', err);
+    logger.error('exportUsersAdmin error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

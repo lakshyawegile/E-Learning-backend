@@ -1,6 +1,7 @@
 const { DeleteObjectCommand } = require('@aws-sdk/client-s3');
 const { getS3Client } = require('./s3Client');
 const { FOLDER_RE, FILENAME_RE } = require('../controllers/mediaController');
+const logger = require('./logger');
 
 const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -38,7 +39,7 @@ async function deleteMediaIfOwned(imageUrl) {
       Key: `${folder}/${filename}`,
     }));
   } catch (err) {
-    console.error('deleteMediaIfOwned error:', err);
+    logger.error('deleteMediaIfOwned error:', err);
   }
 }
 

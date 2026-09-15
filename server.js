@@ -8,6 +8,7 @@ const { startScheduledNotificationCron } = require('./jobs/scheduledNotification
 const http = require('http');
 const { Server } = require('socket.io');
 const { registerChatSocket } = require('./sockets/chatSocket');
+const logger = require('./utils/logger');
 
 const PORT = process.env.PORT || 3002;
 
@@ -28,11 +29,11 @@ const startServer = async () => {
     registerChatSocket(io);
 
     server.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
-      console.log(`Socket.IO path: ${process.env.SOCKET_IO_PATH || '/api/socket'}`);
+      logger.info(`Server is running on port ${PORT}`);
+      logger.info(`Socket.IO path: ${process.env.SOCKET_IO_PATH || '/api/socket'}`);
     });
   } catch (err) {
-    console.error('Failed to start server:', err.message);
+    logger.error('Failed to start server:', err.message);
     process.exit(1);
   }
 };

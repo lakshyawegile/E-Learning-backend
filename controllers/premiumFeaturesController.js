@@ -1,5 +1,6 @@
 const { PremiumFeaturesConfig } = require('../models');
 const { deleteOrphanedMedia } = require('../utils/mediaCleanup');
+const logger = require('../utils/logger');
 
 const DEFAULTS = {
   heading: 'Go Premium',
@@ -172,7 +173,7 @@ const getPremiumFeaturesConfig = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getPremiumFeaturesConfig error:', err);
+    logger.error('getPremiumFeaturesConfig error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -345,7 +346,7 @@ const upsertPremiumFeaturesConfig = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('upsertPremiumFeaturesConfig error:', err);
+    logger.error('upsertPremiumFeaturesConfig error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

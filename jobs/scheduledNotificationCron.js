@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const { ScheduledNotification } = require('../models');
 const { sendBroadcastNotification } = require('../services/notificationBroadcast');
+const logger = require('../utils/logger');
 
 // Fires at :00 and :30 of every hour — a real cron expression, so it's
 // wall-clock aligned (not relative to when the process started), matching
@@ -39,11 +40,11 @@ async function processDueScheduledNotifications() {
       await claimed.save();
       processed += 1;
 
-      console.log(
+      logger.info(
         `[scheduledNotificationCron] Sent ${claimed._id} → ${claimed.sentCount} user(s)`
       );
     } catch (err) {
-      console.error(`[scheduledNotificationCron] Failed ${claimed._id}:`, err.message || err);
+      logger.error(`[scheduledNotificationCron] Failed ${claimed._id}:`, err.message || err);
       // Revert to PENDING so the next tick retries
       claimed.status = 'PENDING';
       claimed.lastErrorMessage = String(err.message || err).slice(0, 500);
@@ -59,12 +60,12 @@ function startScheduledNotificationCron() {
 
   const enabled = String(process.env.SCHEDULED_NOTIFICATION_CRON_ENABLED || 'true').toLowerCase() !== 'false';
   if (!enabled) {
-    console.log('[scheduledNotificationCron] Disabled via SCHEDULED_NOTIFICATION_CRON_ENABLED=false');
+    logger.info('[scheduledNotificationCron] Disabled via SCHEDULED_NOTIFICATION_CRON_ENABLED=false');
     return null;
   }
 
   if (!cron.validate(CRON_SCHEDULE)) {
-    console.error('[scheduledNotificationCron] Invalid schedule:', CRON_SCHEDULE);
+    logger.error('[scheduledNotificationCron] Invalid schedule:', CRON_SCHEDULE);
     return null;
   }
 
@@ -76,7 +77,7 @@ function startScheduledNotificationCron() {
       try {
         await processDueScheduledNotifications();
       } catch (err) {
-        console.error('[scheduledNotificationCron] error:', err.message || err);
+        logger.error('[scheduledNotificationCron] error:', err.message || err);
       } finally {
         running = false;
       }
@@ -84,7 +85,7 @@ function startScheduledNotificationCron() {
     { timezone: CRON_TZ }
   );
 
-  console.log(`[scheduledNotificationCron] Checker "${CRON_SCHEDULE}" (${CRON_TZ})`);
+  logger.info(`[scheduledNotificationCron] Checker "${CRON_SCHEDULE}" (${CRON_TZ})`);
   return scheduledJob;
 }
 

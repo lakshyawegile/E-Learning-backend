@@ -1,6 +1,7 @@
 const { Seminar, SeminarRegistration, User, SeminarHomeConfig } = require('../models');
 const paginate = require('../utils/pagination');
 const { buildNextOccurrenceUTC } = require('../utils/seminarOccurrence');
+const logger = require('../utils/logger');
 
 const normalizeDays = (days) => {
   if (!Array.isArray(days)) return [];
@@ -169,7 +170,7 @@ const createSeminar = async (req, res) => {
 
     return res.status(201).json({ success: true, data: doc });
   } catch (err) {
-    console.error('createSeminar error:', err);
+    logger.error('createSeminar error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -228,7 +229,7 @@ const getSeminarHome = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getSeminarHome error:', err);
+    logger.error('getSeminarHome error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -263,7 +264,7 @@ const upsertSeminarHomeConfig = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('upsertSeminarHomeConfig error:', err);
+    logger.error('upsertSeminarHomeConfig error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -281,7 +282,7 @@ const listSeminars = async (req, res) => {
     const result = await paginate(Seminar, { filter, page, limit, sort: { createdAt: -1 } });
     return res.json(result);
   } catch (err) {
-    console.error('listSeminars error:', err);
+    logger.error('listSeminars error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -298,7 +299,7 @@ const getSeminarById = async (req, res) => {
     if (!doc.isActive && req.query.includeInactive !== 'true') return res.status(404).json({ message: 'Seminar not found' });
     return res.json({ success: true, data: doc });
   } catch (err) {
-    console.error('getSeminarById error:', err);
+    logger.error('getSeminarById error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -332,7 +333,7 @@ const updateSeminar = async (req, res) => {
     if (!doc) return res.status(404).json({ message: 'Seminar not found' });
     return res.json({ success: true, data: doc });
   } catch (err) {
-    console.error('updateSeminar error:', err);
+    logger.error('updateSeminar error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -348,7 +349,7 @@ const deleteSeminar = async (req, res) => {
     if (!deleted) return res.status(404).json({ message: 'Seminar not found' });
     return res.json({ success: true, message: 'Seminar deleted' });
   } catch (err) {
-    console.error('deleteSeminar error:', err);
+    logger.error('deleteSeminar error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -388,7 +389,7 @@ const registerForSeminar = async (req, res) => {
 
     return res.json({ success: true, data: reg });
   } catch (err) {
-    console.error('registerForSeminar error:', err);
+    logger.error('registerForSeminar error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -406,7 +407,7 @@ const mySeminarRegistrations = async (req, res) => {
       .lean();
     return res.json({ success: true, data: regs });
   } catch (err) {
-    console.error('mySeminarRegistrations error:', err);
+    logger.error('mySeminarRegistrations error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -431,7 +432,7 @@ const listRegistrationsForSeminar = async (req, res) => {
     });
     return res.json(result);
   } catch (err) {
-    console.error('listRegistrationsForSeminar error:', err);
+    logger.error('listRegistrationsForSeminar error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

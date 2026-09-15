@@ -1,6 +1,7 @@
 const { FreeVideo } = require('../models');
 const paginate = require('../utils/pagination');
 const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
+const logger = require('../utils/logger');
 
 // POST /api/free-videos
 const createFreeVideo = async (req, res) => {
@@ -26,7 +27,7 @@ const createFreeVideo = async (req, res) => {
 
     return res.status(201).json(video);
   } catch (err) {
-    console.error('createFreeVideo error:', err);
+    logger.error('createFreeVideo error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -59,7 +60,7 @@ const listFreeVideos = async (req, res) => {
     });
     return res.json(result);
   } catch (err) {
-    console.error('listFreeVideos error:', err);
+    logger.error('listFreeVideos error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -77,7 +78,7 @@ const getFreeVideoById = async (req, res) => {
     }
     return res.json(video);
   } catch (err) {
-    console.error('getFreeVideoById error:', err);
+    logger.error('getFreeVideoById error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -116,7 +117,7 @@ const updateFreeVideo = async (req, res) => {
 
     return res.json(video);
   } catch (err) {
-    console.error('updateFreeVideo error:', err);
+    logger.error('updateFreeVideo error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

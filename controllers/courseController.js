@@ -1,6 +1,7 @@
 const { Course, Lesson, Enrollment, Progress } = require('../models');
 const paginate = require('../utils/pagination');
 const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
+const logger = require('../utils/logger');
 
 // GET /api/courses
 const getCourses = async (req, res) => {
@@ -24,7 +25,7 @@ const getCourses = async (req, res) => {
     });
     return res.json(result);
   } catch (err) {
-    console.error('getCourses error:', err);
+    logger.error('getCourses error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -48,7 +49,7 @@ const getCourseById = async (req, res) => {
 
     return res.json({ ...course, lessons });
   } catch (err) {
-    console.error('getCourseById error:', err);
+    logger.error('getCourseById error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -97,7 +98,7 @@ const getMyEnrolledCourses = async (req, res) => {
 
     return res.json({ ...result, data });
   } catch (err) {
-    console.error('getMyEnrolledCourses error:', err);
+    logger.error('getMyEnrolledCourses error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -134,7 +135,7 @@ const updateCourse = async (req, res) => {
 
     return res.json(course);
   } catch (err) {
-    console.error('updateCourse error:', err);
+    logger.error('updateCourse error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

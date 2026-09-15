@@ -2,6 +2,7 @@ const { Types } = require('mongoose');
 const { ScheduledWebinarNotification, Seminar } = require('../models');
 const paginate = require('../utils/pagination');
 const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
+const logger = require('../utils/logger');
 
 
 // Positive = minutes before the session starts, 0 = at the start,
@@ -136,7 +137,7 @@ const createWebinarSchedule = async (req, res) => {
       data: mapSchedule(job),
     });
   } catch (err) {
-    console.error('createWebinarSchedule error:', err);
+    logger.error('createWebinarSchedule error:', err);
     if (err.status) {
       return res.status(err.status).json({ success: false, message: err.message });
     }
@@ -169,7 +170,7 @@ const listWebinarSchedules = async (req, res) => {
       meta: result.meta,
     });
   } catch (err) {
-    console.error('listWebinarSchedules error:', err);
+    logger.error('listWebinarSchedules error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -247,7 +248,7 @@ const updateWebinarSchedule = async (req, res) => {
       data: mapSchedule(job),
     });
   } catch (err) {
-    console.error('updateWebinarSchedule error:', err);
+    logger.error('updateWebinarSchedule error:', err);
     if (err.status) {
       return res.status(err.status).json({ success: false, message: err.message });
     }
@@ -285,7 +286,7 @@ const cancelWebinarSchedule = async (req, res) => {
       data: mapSchedule(deleted),
     });
   } catch (err) {
-    console.error('cancelWebinarSchedule error:', err);
+    logger.error('cancelWebinarSchedule error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

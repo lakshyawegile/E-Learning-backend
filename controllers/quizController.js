@@ -1,5 +1,6 @@
 const { QuizTopic, QuizQuestion, QuizAttempt } = require('../models');
 const paginate = require('../utils/pagination');
+const logger = require('../utils/logger');
 
 // POST /api/quizzes/topics
 const createTopic = async (req, res) => {
@@ -11,7 +12,7 @@ const createTopic = async (req, res) => {
     const topic = await QuizTopic.create({ organizationId, title, description, isActive, createdBy });
     return res.status(201).json(topic);
   } catch (err) {
-    console.error('createTopic error:', err);
+    logger.error('createTopic error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -38,7 +39,7 @@ const addQuestion = async (req, res) => {
     });
     return res.status(201).json(question);
   } catch (err) {
-    console.error('addQuestion error:', err);
+    logger.error('addQuestion error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -108,7 +109,7 @@ const listTopics = async (req, res) => {
 
     return res.json(result);
   } catch (err) {
-    console.error('listTopics error:', err);
+    logger.error('listTopics error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -126,7 +127,7 @@ const getTopicWithQuestions = async (req, res) => {
 
     return res.json({ ...topic, questions });
   } catch (err) {
-    console.error('getTopicWithQuestions error:', err);
+    logger.error('getTopicWithQuestions error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -140,7 +141,7 @@ const deleteTopic = async (req, res) => {
     if (!deleted) return res.status(404).json({ message: 'Topic not found' });
     return res.json({ message: 'Topic and its questions deleted' });
   } catch (err) {
-    console.error('deleteTopic error:', err);
+    logger.error('deleteTopic error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -153,7 +154,7 @@ const deleteQuestion = async (req, res) => {
     if (!deleted) return res.status(404).json({ message: 'Question not found' });
     return res.json({ message: 'Question deleted' });
   } catch (err) {
-    console.error('deleteQuestion error:', err);
+    logger.error('deleteQuestion error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -177,7 +178,7 @@ const updateTopic = async (req, res) => {
     if (!updated) return res.status(404).json({ message: 'Topic not found' });
     return res.json(updated);
   } catch (err) {
-    console.error('updateTopic error:', err);
+    logger.error('updateTopic error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -210,7 +211,7 @@ const updateQuestion = async (req, res) => {
     if (!updated) return res.status(404).json({ message: 'Question not found' });
     return res.json(updated);
   } catch (err) {
-    console.error('updateQuestion error:', err);
+    logger.error('updateQuestion error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -235,7 +236,7 @@ const startAttempt = async (req, res) => {
     }
     return res.json(attempt);
   } catch (err) {
-    console.error('startAttempt error:', err);
+    logger.error('startAttempt error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -261,7 +262,7 @@ const answerQuestion = async (req, res) => {
     await attempt.save();
     return res.json(attempt);
   } catch (err) {
-    console.error('answerQuestion error:', err);
+    logger.error('answerQuestion error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -274,7 +275,7 @@ const getAttempt = async (req, res) => {
     if (!attempt) return res.status(404).json({ message: 'Attempt not found' });
     return res.json(attempt);
   } catch (err) {
-    console.error('getAttempt error:', err);
+    logger.error('getAttempt error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

@@ -1,4 +1,5 @@
 const { AppModuleConfig } = require('../models');
+const logger = require('../utils/logger');
 
 const DEFAULT_MODULES = {
   carousel: true,
@@ -39,7 +40,7 @@ const getAppModules = async (req, res) => {
       data,
     });
   } catch (err) {
-    console.error('getAppModules error:', err);
+    logger.error('getAppModules error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

@@ -1,5 +1,6 @@
 const { ChatRoom, ChatMessage, User, ChatRoomMembership } = require('../models');
 const { containsNumericLikeText } = require('../utils/regex');
+const logger = require('../utils/logger');
 
 const formatIST = (date) => {
   if (!date) return '';
@@ -74,7 +75,7 @@ const listRooms = async (req, res) => {
       })),
     });
   } catch (err) {
-    console.error('listRooms error:', err);
+    logger.error('listRooms error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -108,7 +109,7 @@ const createRoom = async (req, res) => {
     if (err && err.code === 11000) {
       return res.status(409).json({ message: 'Room slug already exists' });
     }
-    console.error('createRoom error:', err);
+    logger.error('createRoom error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -142,7 +143,7 @@ const updateRoom = async (req, res) => {
     if (err && err.code === 11000) {
       return res.status(409).json({ message: 'Room slug already exists' });
     }
-    console.error('updateRoom error:', err);
+    logger.error('updateRoom error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -163,7 +164,7 @@ const deleteRoom = async (req, res) => {
     if (!room) return res.status(404).json({ message: 'Room not found' });
     return res.json({ success: true });
   } catch (err) {
-    console.error('deleteRoom error:', err);
+    logger.error('deleteRoom error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -198,7 +199,7 @@ const joinRoom = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('joinRoom error:', err);
+    logger.error('joinRoom error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -264,7 +265,7 @@ const listMessages = async (req, res) => {
       meta: { nextCursor },
     });
   } catch (err) {
-    console.error('listMessages error:', err);
+    logger.error('listMessages error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -330,7 +331,7 @@ const postMessage = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('postMessage error:', err);
+    logger.error('postMessage error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

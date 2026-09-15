@@ -2,6 +2,7 @@ const express = require('express');
 const { recordClicks, getHeatmap, getScreens, logEvent, getInstallStats, getClicksSummary, getDashboardSummary, getActiveUsersList, getPageEngagementSummary } = require('../controllers/analyticsController');
 const { AnalyticsLogEvent } = require('../models');
 const requireOrgAdmin = require('../middlewares/requireOrgAdmin');
+const logger = require('../utils/logger');
 
 const protectedAnalyticsRoutes = express.Router();
 const publicAnalyticsRoutes = express.Router();
@@ -69,7 +70,7 @@ publicAnalyticsRoutes.post('/track', async (req, res) => {
     await AnalyticsLogEvent.insertMany(docs, { ordered: false });
     return res.status(200).json({ success: true, inserted: docs.length });
   } catch (err) {
-    console.error('track bulk insert error:', err);
+    logger.error('track bulk insert error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });
@@ -111,7 +112,7 @@ protectedAnalyticsRoutes.post('/track', async (req, res) => {
     await AnalyticsLogEvent.insertMany(docs, { ordered: false });
     return res.status(200).json({ success: true, inserted: docs.length });
   } catch (err) {
-    console.error('protected track bulk insert error:', err);
+    logger.error('protected track bulk insert error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 });

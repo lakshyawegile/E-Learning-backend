@@ -1,4 +1,5 @@
 const { DashboardConfig, CtoBanner } = require('../models');
+const logger = require('../utils/logger');
 
 const defaultSections = () => [
   { key: 'course', title: 'Most Popular Courses', subtitle: 'Discover our most popular courses', order: 1, isActive: true, sectionType: 'popular' },
@@ -42,7 +43,7 @@ const getConfig = async (req, res) => {
       .lean();
     return res.json({ ...config, inlineBanners });
   } catch (err) {
-    console.error('getConfig error:', err);
+    logger.error('getConfig error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -74,7 +75,7 @@ const updateConfig = async (req, res) => {
     ).lean();
     return res.json(config);
   } catch (err) {
-    console.error('updateConfig error:', err);
+    logger.error('updateConfig error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

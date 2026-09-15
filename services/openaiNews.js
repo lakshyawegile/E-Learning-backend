@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const OPENAI_RESPONSES_URL = 'https://api.openai.com/v1/responses';
 const DEFAULT_MODEL = process.env.OPENAI_NEWS_MODEL || process.env.OPENAI_MODEL || 'gpt-4o-mini';
 
@@ -147,7 +148,7 @@ async function fetchOgImage(pageUrl) {
 
     return new URL(raw, pageUrl).href;
   } catch (err) {
-    console.warn('[openaiNews] og:image scrape failed:', err.message || err);
+    logger.warn('[openaiNews] og:image scrape failed:', err.message || err);
     return '';
   } finally {
     clearTimeout(timeout);

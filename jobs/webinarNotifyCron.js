@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const { ScheduledWebinarNotification, Seminar } = require('../models');
 const { notifyAllUsersAboutWebinar } = require('../services/webinarNotify');
 const { buildNextOccurrenceUTC } = require('../utils/seminarOccurrence');
+const logger = require('../utils/logger');
 
 // Check every minute; each rule fires once per seminar session, at its offset.
 const CRON_SCHEDULE = process.env.WEBINAR_NOTIFY_CRON_SCHEDULE || '* * * * *';
@@ -136,12 +137,12 @@ async function processDueWebinarNotifications() {
           offsetMinutes > 0 ? `${offsetMinutes}m before`
             : offsetMinutes === 0 ? 'at start'
               : `${-offsetMinutes}m after start`;
-        console.log(
+        logger.info(
           `[webinarNotifyCron] Sent ${claimed._id} for session ${occurrenceKey} ` +
           `(${when}) → ${claimed.lastSentCount} user(s)`
         );
       } catch (err) {
-        console.error(`[webinarNotifyCron] Failed ${rule._id} @${offsetMinutes}:`, err.message || err);
+        logger.error(`[webinarNotifyCron] Failed ${rule._id} @${offsetMinutes}:`, err.message || err);
         // Release just this offset so the next tick retries it, while any other
         // offsets already sent for this session stay sent.
         await ScheduledWebinarNotification.updateOne(
@@ -163,12 +164,12 @@ function startWebinarNotifyCron() {
 
   const enabled = String(process.env.WEBINAR_NOTIFY_CRON_ENABLED || 'true').toLowerCase() !== 'false';
   if (!enabled) {
-    console.log('[webinarNotifyCron] Disabled via WEBINAR_NOTIFY_CRON_ENABLED=false');
+    logger.info('[webinarNotifyCron] Disabled via WEBINAR_NOTIFY_CRON_ENABLED=false');
     return null;
   }
 
   if (!cron.validate(CRON_SCHEDULE)) {
-    console.error('[webinarNotifyCron] Invalid schedule:', CRON_SCHEDULE);
+    logger.error('[webinarNotifyCron] Invalid schedule:', CRON_SCHEDULE);
     return null;
   }
 
@@ -180,7 +181,7 @@ function startWebinarNotifyCron() {
       try {
         await processDueWebinarNotifications();
       } catch (err) {
-        console.error('[webinarNotifyCron] error:', err.message || err);
+        logger.error('[webinarNotifyCron] error:', err.message || err);
       } finally {
         running = false;
       }
@@ -188,7 +189,7 @@ function startWebinarNotifyCron() {
     { timezone: CRON_TZ }
   );
 
-  console.log(`[webinarNotifyCron] Seminar reminder checker "${CRON_SCHEDULE}" (${CRON_TZ})`);
+  logger.info(`[webinarNotifyCron] Seminar reminder checker "${CRON_SCHEDULE}" (${CRON_TZ})`);
   return scheduledJob;
 }
 

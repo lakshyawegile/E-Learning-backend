@@ -1,6 +1,7 @@
 const https = require('https');
 
 const { ExchangeRateCache } = require('../models');
+const logger = require('../utils/logger');
 
 const EXCHANGE_RATE_API_KEY =
   process.env.EXCHANGE_RATE_API_KEY || '0e68e791dfe80a5637280ec3';
@@ -39,7 +40,7 @@ const getExchangeRates = async (req, res) => {
     const yesterday = new Date(now);
     yesterday.setUTCDate(yesterday.getUTCDate() - 1);
     const yesterdayUTC = formatUTCDate(yesterday);
-    console.log('yesterdayUTC', yesterdayUTC);
+    logger.info('yesterdayUTC', yesterdayUTC);
 
     const cached = await ExchangeRateCache.findOne({ base_code: base, date: todayUTC })
       .lean();
@@ -177,7 +178,7 @@ const getExchangeRates = async (req, res) => {
       delta,
     });
   } catch (err) {
-    console.error('getExchangeRates error:', err);
+    logger.error('getExchangeRates error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

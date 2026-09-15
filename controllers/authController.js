@@ -1,6 +1,7 @@
 const { User } = require('../models');
 const jwt = require('jsonwebtoken');
 const AppOtp = require('../models/AppOtp');
+const logger = require('../utils/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 const JWT_EXPIRY = process.env.JWT_EXPIRY || '30d';
@@ -8,7 +9,7 @@ const JWT_EXPIRY = process.env.JWT_EXPIRY || '30d';
 function generateOtp() { var Otp = ''; for (i = 1; i <= 4; i++) { Otp += Math.floor(Math.random() * 9); } return Otp; }
 
 const sendOtpPhoneNumber = async (email) => {
-  console.log('-----------',email,'-----')
+  logger.info('-----------',email,'-----')
   var otp = generateOtp();
   var email = `91${email}`;
   const http = require('https');
@@ -33,8 +34,8 @@ const sendOtpPhoneNumber = async (email) => {
 
   req.write('{\n  "Param1": "value1",\n  "Param2": "value2",\n  "Param3": "value3"\n}');
   req.end();
-  console.log('response---',req)
-  console.log('status---',otp)
+  logger.info('response---',req)
+  logger.info('status---',otp)
   return ({
       status: true,
       otp,
@@ -57,7 +58,7 @@ const authWithOtp = async (req, res) => {
 
     const response = await sendOtpPhoneNumber(mobile);
     if (!response || !response.status) {
-      console.error('Failed to send OTP via MSG91', response);
+      logger.error('Failed to send OTP via MSG91', response);
       return res.status(500).json({ message: 'Failed to send OTP', status: false });
     }
 
@@ -74,7 +75,7 @@ const authWithOtp = async (req, res) => {
       userId: user ? user._id : null,
     });
   } catch (err) {
-    console.error('authentication error:', err);
+    logger.error('authentication error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -152,7 +153,7 @@ const verifyOtp = async (req, res) => {
 
     return res.json({ message: 'OTP verified', user, token });
   } catch (err) {
-    console.error('verifyOtp error:', err);
+    logger.error('verifyOtp error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -188,7 +189,7 @@ const refreshToken = async (req, res) => {
 
     return res.json({ success: true, token: newToken, user });
   } catch (err) {
-    console.error('refreshToken error:', err);
+    logger.error('refreshToken error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

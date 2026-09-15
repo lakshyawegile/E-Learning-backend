@@ -1,4 +1,5 @@
 const { Progress } = require('../models');
+const logger = require('../utils/logger');
 
 // POST /api/progress
 const upsertProgress = async (req, res) => {
@@ -20,7 +21,7 @@ const upsertProgress = async (req, res) => {
 
     return res.json(progress);
   } catch (err) {
-    console.error('upsertProgress error:', err);
+    logger.error('upsertProgress error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

@@ -1,5 +1,6 @@
 const { FounderInfo } = require('../models');
 const { deleteMediaIfOwned } = require('../utils/mediaCleanup');
+const logger = require('../utils/logger');
 
 // GET /api/founder (org-wise; requires JWT since org comes from token)
 const getFounderInfo = async (req, res) => {
@@ -27,7 +28,7 @@ const getFounderInfo = async (req, res) => {
           },
     });
   } catch (err) {
-    console.error('getFounderInfo error:', err);
+    logger.error('getFounderInfo error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -73,7 +74,7 @@ const upsertFounderInfo = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('upsertFounderInfo error:', err);
+    logger.error('upsertFounderInfo error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

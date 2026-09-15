@@ -1,6 +1,7 @@
 const { AnalyticsClick, AnalyticsLogEvent, AnalyticsInstall } = require('../analytics');
 const { DailyAnalytics, User } = require('../models');
 const { distinctUserIdsWithActivePremium } = require('../utils/distinctUserIdsWithActivePremium');
+const logger = require('../utils/logger');
 
 const GRID_SIZE_DEFAULT = 10;
 
@@ -42,7 +43,7 @@ const recordClicks = async (req, res) => {
     await AnalyticsClick.insertMany(docs);
     return res.status(201).json({ message: 'Clicks recorded', count: docs.length });
   } catch (err) {
-    console.error('recordClicks error:', err);
+    logger.error('recordClicks error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -83,7 +84,7 @@ const getHeatmap = async (req, res) => {
       totalClicks: clicks.length,
     });
   } catch (err) {
-    console.error('getHeatmap error:', err);
+    logger.error('getHeatmap error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -105,7 +106,7 @@ const getScreens = async (req, res) => {
 
     return res.json(list);
   } catch (err) {
-    console.error('getScreens error:', err);
+    logger.error('getScreens error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -239,7 +240,7 @@ const getInstallStats = async (req, res) => {
       data,
     });
   } catch (err) {
-    console.error('getInstallStats error:', err);
+    logger.error('getInstallStats error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -293,7 +294,7 @@ const getClicksSummary = async (req, res) => {
     const row = agg[0] || { totalClicks: 0, uniqueUsersCount: 0 };
     return res.json({ screenName, sectionKey: sectionKey || '', ...row });
   } catch (err) {
-    console.error('getClicksSummary error:', err);
+    logger.error('getClicksSummary error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -324,7 +325,7 @@ const logEvent = async (req, res) => {
     await AnalyticsLogEvent.create(doc);
     return res.status(201).json({ success: true });
   } catch (err) {
-    console.error('logEvent error:', err);
+    logger.error('logEvent error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -353,7 +354,7 @@ const logInstall = async (req, res) => {
 
     return res.status(201).json({ success: true });
   } catch (err) {
-    console.error('logInstall error:', err);
+    logger.error('logInstall error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -472,7 +473,7 @@ const getDashboardSummary = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getDashboardSummary error:', err);
+    logger.error('getDashboardSummary error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -538,7 +539,7 @@ const getActiveUsersList = async (req, res) => {
       data,
     });
   } catch (err) {
-    console.error('getActiveUsersList error:', err);
+    logger.error('getActiveUsersList error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -589,7 +590,7 @@ const getPageEngagementSummary = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getPageEngagementSummary error:', err);
+    logger.error('getPageEngagementSummary error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

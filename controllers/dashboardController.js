@@ -1,5 +1,6 @@
 const { CtoBanner, Course, Enrollment, Progress, FreeVideo, ShortVideo, DashboardConfig } = require('../models');
 const { defaultSections, defaultAddons } = require('./dashboardConfigController');
+const logger = require('../utils/logger');
 
 const requireOrg = (req, res) => {
   const organizationId = req.user?.organizationId;
@@ -29,7 +30,7 @@ const getDashboardBanners = async (req, res) => {
       inline: banners.filter((b) => b.type === 'INLINE'),
     });
   } catch (err) {
-    console.error('getDashboardBanners error:', err);
+    logger.error('getDashboardBanners error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -85,7 +86,7 @@ const getPopularCourses = async (req, res) => {
 
     return res.json({ sectionType: 'popular', data: popularCourses });
   } catch (err) {
-    console.error('getPopularCourses error:', err);
+    logger.error('getPopularCourses error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -111,7 +112,7 @@ const getRecommendedCourses = async (req, res) => {
 
     return res.json({ sectionType: 'recommended', data: recommendedCourses });
   } catch (err) {
-    console.error('getRecommendedCourses error:', err);
+    logger.error('getRecommendedCourses error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -144,7 +145,7 @@ const getContinueCourses = async (req, res) => {
 
     return res.json({ data: continueCourses });
   } catch (err) {
-    console.error('getContinueCourses error:', err);
+    logger.error('getContinueCourses error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -163,7 +164,7 @@ const getDashboardFreeVideos = async (req, res) => {
 
     return res.json({ data: freeVideos });
   } catch (err) {
-    console.error('getDashboardFreeVideos error:', err);
+    logger.error('getDashboardFreeVideos error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -182,7 +183,7 @@ const getDashboardShorts = async (req, res) => {
 
     return res.json({ sectionType: 'shorts', data: shorts });
   } catch (err) {
-    console.error('getDashboardShorts error:', err);
+    logger.error('getDashboardShorts error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -203,7 +204,7 @@ const getDashboardSectionsConfig = async (req, res) => {
 
     return res.json({ addons: addonsFromConfig, sections: orderedSections });
   } catch (err) {
-    console.error('getDashboardSectionsConfig error:', err);
+    logger.error('getDashboardSectionsConfig error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -225,7 +226,7 @@ const getDashboard = async (req, res) => {
     const banners = await CtoBanner.find({ ...baseFilter, type: { $in: ['CAROUSEL', 'INLINE'] } })
       .sort({ createdAt: -1 })
       .lean();
-    // console.log('banners', banners);
+    // logger.info('banners', banners);
     const carouselBanners = banners.filter((b) => b.type === 'CAROUSEL');
     const inlineBanners = banners.filter((b) => b.type === 'INLINE');
 
@@ -402,7 +403,7 @@ const getDashboard = async (req, res) => {
       sections,
     });
   } catch (err) {
-    console.error('getDashboard error:', err);
+    logger.error('getDashboard error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

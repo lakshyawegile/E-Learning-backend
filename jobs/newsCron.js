@@ -3,6 +3,7 @@ const { Types } = require('mongoose');
 const { News, Organization, User } = require('../models');
 const { fetchImportExportNews } = require('../services/openaiNews');
 const { notifyAllUsersAboutNews } = require('../services/newsNotify');
+const logger = require('../utils/logger');
 
 // 10:00 AM and 6:00 PM India Standard Time
 const CRON_SCHEDULE = process.env.NEWS_CRON_SCHEDULE || '0 10,18 * * *';
@@ -79,7 +80,7 @@ async function runNewsDigestOnce() {
   const article = await fetchImportExportNews();
 
   if (await isDuplicateNews({ title: article.title, linkUrl: article.linkUrl })) {
-    console.log('[newsCron] Skipping duplicate news:', article.title);
+    logger.info('[newsCron] Skipping duplicate news:', article.title);
     return { skipped: true, reason: 'DUPLICATE', title: article.title };
   }
 
@@ -97,7 +98,7 @@ async function runNewsDigestOnce() {
 
   const notify = await notifyAllUsersAboutNews(news);
 
-  console.log(
+  logger.info(
     `[newsCron] Published news ${news._id} and notified ${notify.sentCount} user(s); push success=${notify.push?.successCount || 0}`
   );
 
@@ -114,12 +115,12 @@ function startNewsCron() {
 
   const enabled = String(process.env.NEWS_CRON_ENABLED || 'true').toLowerCase() !== 'false';
   if (!enabled) {
-    console.log('[newsCron] Disabled via NEWS_CRON_ENABLED=false');
+    logger.info('[newsCron] Disabled via NEWS_CRON_ENABLED=false');
     return null;
   }
 
   if (!cron.validate(CRON_SCHEDULE)) {
-    console.error('[newsCron] Invalid NEWS_CRON_SCHEDULE:', CRON_SCHEDULE);
+    logger.error('[newsCron] Invalid NEWS_CRON_SCHEDULE:', CRON_SCHEDULE);
     return null;
   }
 
@@ -127,15 +128,15 @@ function startNewsCron() {
     CRON_SCHEDULE,
     async () => {
       if (running) {
-        console.log('[newsCron] Previous run still in progress, skipping');
+        logger.info('[newsCron] Previous run still in progress, skipping');
         return;
       }
       running = true;
       try {
         await runNewsDigestOnce();
       } catch (err) {
-        console.error('[newsCron] error:', err.message || err);
-        if (err.details) console.error('[newsCron] details:', err.details);
+        logger.error('[newsCron] error:', err.message || err);
+        if (err.details) logger.error('[newsCron] details:', err.details);
       } finally {
         running = false;
       }
@@ -143,7 +144,7 @@ function startNewsCron() {
     { timezone: CRON_TZ }
   );
 
-  console.log(`[newsCron] Scheduled "${CRON_SCHEDULE}" (${CRON_TZ})`);
+  logger.info(`[newsCron] Scheduled "${CRON_SCHEDULE}" (${CRON_TZ})`);
   return scheduledJob;
 }
 

@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const { User } = require('../models');
 const { NO_TOKEN, INVALID_TOKEN, TOKEN_EXPIRED, USER_NOT_FOUND } = require('../constants/authErrors');
+const logger = require('../utils/logger');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
@@ -40,7 +41,7 @@ const authenticate = async (req, res, next) => {
 
     next();
   } catch (err) {
-    console.error('Auth middleware error:', err);
+    logger.error('Auth middleware error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -72,7 +73,7 @@ const authenticateOptional = async (req, res, next) => {
 
     next();
   } catch (err) {
-    console.error('Optional auth middleware error:', err);
+    logger.error('Optional auth middleware error:', err);
     next();
   }
 };

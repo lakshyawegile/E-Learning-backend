@@ -4,6 +4,7 @@ const paginate = require('../utils/pagination');
 const { notifyUserAboutNews } = require('../services/newsNotify');
 const { notifyUserAboutWebinar } = require('../services/webinarNotify');
 const { normalizeBroadcastInput, sendBroadcastNotification } = require('../services/notificationBroadcast');
+const logger = require('../utils/logger');
 
 // POST /api/notifications/broadcast (admin)
 const broadcastNotification = async (req, res) => {
@@ -31,7 +32,7 @@ const broadcastNotification = async (req, res) => {
       push: result.push,
     });
   } catch (err) {
-    console.error('broadcastNotification error:', err);
+    logger.error('broadcastNotification error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -57,7 +58,7 @@ const createNotification = async (req, res) => {
 
     return res.status(201).json(notification);
   } catch (err) {
-    console.error('createNotification error:', err);
+    logger.error('createNotification error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -85,7 +86,7 @@ const listMyNotifications = async (req, res) => {
 
     return res.json(result);
   } catch (err) {
-    console.error('listMyNotifications error:', err);
+    logger.error('listMyNotifications error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -101,7 +102,7 @@ const getUnreadCount = async (req, res) => {
     const count = await Notification.countDocuments({ userId, read: false });
     return res.json({ unreadCount: count });
   } catch (err) {
-    console.error('getUnreadCount error:', err);
+    logger.error('getUnreadCount error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -126,7 +127,7 @@ const markAsRead = async (req, res) => {
     }
     return res.json(notification);
   } catch (err) {
-    console.error('markAsRead error:', err);
+    logger.error('markAsRead error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -145,7 +146,7 @@ const markAllAsRead = async (req, res) => {
     );
     return res.json({ message: 'All marked as read', modifiedCount: result.modifiedCount });
   } catch (err) {
-    console.error('markAllAsRead error:', err);
+    logger.error('markAllAsRead error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -221,7 +222,7 @@ const testNewsNotification = async (req, res) => {
       result,
     });
   } catch (err) {
-    console.error('testNewsNotification error:', err);
+    logger.error('testNewsNotification error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -295,7 +296,7 @@ const testWebinarNotification = async (req, res) => {
       result,
     });
   } catch (err) {
-    console.error('testWebinarNotification error:', err);
+    logger.error('testWebinarNotification error:', err);
     return res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

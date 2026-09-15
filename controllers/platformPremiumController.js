@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const { PlatformPremiumAccess, User } = require('../models');
+const logger = require('../utils/logger');
 
 const { Types } = mongoose;
 
@@ -45,7 +46,7 @@ const listPlatformPremiumAccess = async (req, res) => {
 
     return res.json({ data });
   } catch (err) {
-    console.error('listPlatformPremiumAccess error:', err);
+    logger.error('listPlatformPremiumAccess error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -102,7 +103,7 @@ const createPlatformPremiumAccess = async (req, res) => {
 
     return res.status(201).json(populated);
   } catch (err) {
-    console.error('createPlatformPremiumAccess error:', err);
+    logger.error('createPlatformPremiumAccess error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -156,7 +157,7 @@ const updatePlatformPremiumAccess = async (req, res) => {
 
     return res.json(populated);
   } catch (err) {
-    console.error('updatePlatformPremiumAccess error:', err);
+    logger.error('updatePlatformPremiumAccess error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -189,7 +190,7 @@ const cancelPlatformPremiumAccess = async (req, res) => {
 
     return res.json({ message: 'Premium access revoked', grant: grant.toObject() });
   } catch (err) {
-    console.error('cancelPlatformPremiumAccess error:', err);
+    logger.error('cancelPlatformPremiumAccess error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

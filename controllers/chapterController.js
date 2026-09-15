@@ -1,4 +1,5 @@
 const { Chapter, Course, Lesson } = require('../models');
+const logger = require('../utils/logger');
 
 // GET /api/courses/:courseId/chapters
 const listChaptersByCourse = async (req, res) => {
@@ -9,7 +10,7 @@ const listChaptersByCourse = async (req, res) => {
     const chapters = await Chapter.find({ courseId }).sort({ order: 1 }).lean();
     return res.json(chapters);
   } catch (err) {
-    console.error('listChaptersByCourse error:', err);
+    logger.error('listChaptersByCourse error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -30,7 +31,7 @@ const createChapter = async (req, res) => {
     });
     return res.status(201).json(chapter);
   } catch (err) {
-    console.error('createChapter error:', err);
+    logger.error('createChapter error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -51,7 +52,7 @@ const updateChapter = async (req, res) => {
     if (!chapter) return res.status(404).json({ message: 'Chapter not found' });
     return res.json(chapter);
   } catch (err) {
-    console.error('updateChapter error:', err);
+    logger.error('updateChapter error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -66,7 +67,7 @@ const deleteChapter = async (req, res) => {
     await Chapter.findByIdAndDelete(chapterId);
     return res.json({ message: 'Chapter and its lessons deleted' });
   } catch (err) {
-    console.error('deleteChapter error:', err);
+    logger.error('deleteChapter error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

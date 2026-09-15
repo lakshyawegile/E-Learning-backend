@@ -1,5 +1,6 @@
 const { ShortVideo } = require('../models');
 const paginate = require('../utils/pagination');
+const logger = require('../utils/logger');
 
 // POST /api/short-videos
 const createShortVideo = async (req, res) => {
@@ -28,7 +29,7 @@ const createShortVideo = async (req, res) => {
 
     return res.status(201).json(video);
   } catch (err) {
-    console.error('createShortVideo error:', err);
+    logger.error('createShortVideo error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -58,7 +59,7 @@ const listShortVideos = async (req, res) => {
 
     return res.json(result);
   } catch (err) {
-    console.error('listShortVideos error:', err);
+    logger.error('listShortVideos error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -82,7 +83,7 @@ const getShortVideoById = async (req, res) => {
 
     return res.json(video);
   } catch (err) {
-    console.error('getShortVideoById error:', err);
+    logger.error('getShortVideoById error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -109,7 +110,7 @@ const updateShortVideo = async (req, res) => {
 
     return res.json(video);
   } catch (err) {
-    console.error('updateShortVideo error:', err);
+    logger.error('updateShortVideo error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -124,7 +125,7 @@ const deleteShortVideo = async (req, res) => {
     }
     return res.json({ message: 'Short video deleted' });
   } catch (err) {
-    console.error('deleteShortVideo error:', err);
+    logger.error('deleteShortVideo error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

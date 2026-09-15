@@ -1,5 +1,6 @@
 const { ProfileQuestionConfig } = require('../models');
 const { _internals } = require('./profileQuestionsController');
+const logger = require('../utils/logger');
 
 const {
   INPUT_TYPES,
@@ -173,7 +174,7 @@ const getConfig = async (req, res) => {
 
     return res.json({ success: true, data: config });
   } catch (err) {
-    console.error('getProfileQuestionConfig error:', err);
+    logger.error('getProfileQuestionConfig error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -222,7 +223,7 @@ const upsertConfig = async (req, res) => {
 
     return res.json({ success: true, data: saved });
   } catch (err) {
-    console.error('upsertProfileQuestionConfig error:', err);
+    logger.error('upsertProfileQuestionConfig error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

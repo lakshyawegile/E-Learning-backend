@@ -1,4 +1,12 @@
+const logger = require('../utils/logger');
+
+// Logs every request with its full payload AND full response body, so it is
+// gated behind LOG_LEVEL=info and off by default. Beyond the sheer volume, the
+// response body includes things like JWTs on login and user contact details —
+// not something to leave writing to disk permanently.
 const apiLogger = (req, res, next) => {
+  if (!logger.isEnabled('info')) return next();
+
   const startTime = Date.now();
   const { method, originalUrl, body, query } = req;
 
@@ -13,7 +21,7 @@ const apiLogger = (req, res, next) => {
       response: data,
       duration: `${duration}ms`,
     };
-    console.log('API Call:', JSON.stringify(logData, null, 2));
+    logger.info('API Call:', JSON.stringify(logData, null, 2));
     originalSend.call(this, data);
   };
 
@@ -21,4 +29,3 @@ const apiLogger = (req, res, next) => {
 };
 
 module.exports = apiLogger;
-

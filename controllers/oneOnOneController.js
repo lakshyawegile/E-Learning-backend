@@ -1,5 +1,6 @@
 const { OneOnOneConfig } = require('../models');
 const { deleteOrphanedMedia } = require('../utils/mediaCleanup');
+const logger = require('../utils/logger');
 
 const DEFAULTS = {
   heading: 'One-on-One Hand-Holding Classes',
@@ -135,7 +136,7 @@ const getOneOnOneConfig = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('getOneOnOneConfig error:', err);
+    logger.error('getOneOnOneConfig error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -287,7 +288,7 @@ const upsertOneOnOneConfig = async (req, res) => {
       },
     });
   } catch (err) {
-    console.error('upsertOneOnOneConfig error:', err);
+    logger.error('upsertOneOnOneConfig error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

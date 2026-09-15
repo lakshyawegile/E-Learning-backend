@@ -1,6 +1,7 @@
 const { ScheduledNotification } = require('../models');
 const paginate = require('../utils/pagination');
 const { normalizeBroadcastInput } = require('../services/notificationBroadcast');
+const logger = require('../utils/logger');
 
 // POST /api/notifications/schedule (admin)
 const createScheduledNotification = async (req, res) => {
@@ -31,7 +32,7 @@ const createScheduledNotification = async (req, res) => {
 
     return res.status(201).json(doc);
   } catch (err) {
-    console.error('createScheduledNotification error:', err);
+    logger.error('createScheduledNotification error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -54,7 +55,7 @@ const listScheduledNotifications = async (req, res) => {
     });
     return res.json(result);
   } catch (err) {
-    console.error('listScheduledNotifications error:', err);
+    logger.error('listScheduledNotifications error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -76,7 +77,7 @@ const cancelScheduledNotification = async (req, res) => {
     }
     return res.json({ message: 'Scheduled notification cancelled' });
   } catch (err) {
-    console.error('cancelScheduledNotification error:', err);
+    logger.error('cancelScheduledNotification error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };

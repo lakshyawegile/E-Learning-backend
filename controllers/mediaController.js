@@ -3,6 +3,7 @@ const multer = require('multer');
 const sharp = require('sharp');
 const { PutObjectCommand, GetObjectCommand } = require('@aws-sdk/client-s3');
 const { getS3Client, getPublicS3Url } = require('../utils/s3Client');
+const logger = require('../utils/logger');
 
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const EXT_BY_MIME = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp' };
@@ -77,7 +78,7 @@ const uploadImage = async (req, res) => {
     // read on these keys (see bucket policy).
     return res.status(201).json({ url: getPublicS3Url(key) });
   } catch (err) {
-    console.error('uploadImage error:', err);
+    logger.error('uploadImage error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 };
@@ -103,14 +104,14 @@ const serveMediaImage = async (req, res) => {
     res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
   } catch (err) {
     if (err.name === 'NoSuchKey') return res.status(404).json({ message: 'Not found' });
-    console.error('serveMediaImage S3 error:', err);
+    logger.error('serveMediaImage S3 error:', err);
     return res.status(500).json({ message: 'Internal server error' });
   }
 
   // Headers are already flushed once piping starts — if the stream errors
   // mid-flight we can no longer send a JSON error, just abort the connection.
   body.on('error', (err) => {
-    console.error('serveMediaImage stream error:', err);
+    logger.error('serveMediaImage stream error:', err);
     res.destroy(err);
   });
 
